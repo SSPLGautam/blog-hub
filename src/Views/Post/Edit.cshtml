@@ -1,0 +1,77 @@
+﻿@using BlogApp.ViewModel
+@model EditPostViewModel 
+@{
+
+	ViewData["Title"] = "Edit Post";
+
+}
+
+<style>
+	.content-wrapper {
+		padding: 20px;
+		max-width: 1000px;
+		margin: 0 auto;
+		font-family: sans-serif;
+	}
+</style>
+
+<div class="content-wrapper">
+	<div class="row align-items-center">
+		<div class="col-6">
+			<h2>@ViewData["Title"]</h2>
+		</div>
+
+		<div class="col-6 text-end">
+			<a asp-action="Index" asp-controller="Post" class="btn btn-primary mt-1">Back to List</a>
+		</div>
+	</div>
+
+	<hr />
+
+	<form asp-action="Edit" asp-controller="Post" method="post" enctype="multipart/form-data">
+		<div class="Validation-summary">
+			<div asp-validation-summary="All" class="text-danger"></div>
+		</div>
+		<input asp-for="post.Id" hidden />
+		<div class="form-group">
+			<label asp-for="post.Title"></label>
+			<input asp-for="post.Title" class="form-control" />
+			<span asp-validation-for="post.Title" class="text-danger"></span>
+		</div>
+
+		<div class="form-group">
+			<label asp-for="post.CategoryId"></label>
+			<select asp-for="post.CategoryId" asp-items="Model.Categories" class="form-control">
+				<option value="">Select Category</option>
+			</select>
+			<span asp-validation-for="post.CategoryId" class="text-danger"></span>
+		</div>
+
+		<div class="form-group">
+			<label asp-for="post.Authore">Author</label>
+			<input asp-for="post.Authore" class="form-control" />
+			<span asp-validation-for="post.Authore" class="text-danger"></span>
+		</div>
+
+		<div class="form-group">
+			<label asp-for="post.Content"></label>
+			<textarea asp-for="post.Content" class="form-control" rows="5"></textarea>
+			<span asp-validation-for="post.Content" class="text-danger"></span>
+		</div>
+
+		<div class="form-group">
+			<label asp-for="FeatureImage"></label>
+			<input asp-for="FeatureImage" type="file" class="form-control" />
+		</div>
+		<button type="submit" class="btn btn-primary mt-1">Update</button>
+
+	</form>
+</div>
+@section Scripts {
+	<script src="https://cdn.tiny.cloud/1/ce3jmquk0rn78d6xl35qmxte4o0700434705uk08laqmx4b7/tinymce/8/tinymce.min.js" referrerpolicy="origin" crossorigin="anonymous"></script>
+	<script>
+			  tinymce.init({
+		selector: 'textarea',
+			  });
+	</script>
+}

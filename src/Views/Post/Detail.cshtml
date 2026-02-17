@@ -1,0 +1,146 @@
+﻿@model BlogApp.Models.Post
+
+@{
+	ViewData["Title"] = "Post Detail";
+}
+
+<style>
+	.content-wrapper {
+		padding: 20px;
+		max-width: 1000px;
+		margin: 0 auto;
+		font-family: sans-serif;
+	}
+
+	.feature_image {
+		width: 100%;
+		height: 500px;
+		object-fit: cover;
+		margin-bottom: 20px;
+	}
+</style>
+@if (User.IsInRole("Admin"))
+{
+	<div class="text-end">
+		<a asp-action="Edit" asp-controller="Post" asp-route-id="@Model.Id" class="btn btn-secondary mx-3 my-3">Edit Post</a>
+		<a class=" btn btn-danger mx-3 my-3" asp-action="Delete" asp-controller="Post" asp-route-id="@Model.Id">Delete post</a>
+
+
+	</div>
+}
+<div class="content-wrapper">
+	<h1>@Model.Title</h1>
+	<p>
+		<span class="badge bg-primary">By:</span>@Model.Authore| <span class="badge bg-primary">Published on</span>
+		@Model.PublishedDate.ToString("MMMM dd yyyy")
+	</p>
+	<p><span class="badge bg-secondary ">Category</span>@Model.Category.Name</p>
+	<img src="@Model.FeatureImagePath" alt="@Model.Title" class="feature_image" />
+	<hr />
+	<div>@Html.Raw(Model.Content)</div>
+
+	<hr />
+	<h2>Comments</h2>
+	@if (Model.Comments != null && Model.Comments.Any())
+	{
+		<div id="commentSection">
+			@foreach (var comment in Model.Comments)
+			{
+				<div class="card mb-3 shadow-sm">
+					<div class="card-body">
+						<h5 class="card-title">@comment.UserName</h5>
+						<p class="card-text text-muted">@comment.CommentDate</p>
+						<p class="card-text">@comment.Content</p>
+						@* write delete Ui *@
+						@if (User.IsInRole("Admin"))
+						{
+							<button class="btn btn-sm btn-danger mt-2"
+									onclick="deleteComment(@comment.Id)">
+								<i class="bi bi-trash"></i> Delete
+							</button>
+						}
+					</div>
+				</div>
+			}
+		</div>
+	}
+	else
+	{
+		<p class="text-muted ">No Comment yet .Be the first to Comment</p>
+	}
+	@if (User.Identity.IsAuthenticated)
+	{
+		<h4>Add a Comment</h4>
+		<form id="commentForm">
+			<div class="form-group">
+				<label for="Content">Content</label>
+				<textarea id="Content" name="Content" rows="3" required class="form-control"></textarea>
+			</div>
+
+			<button type="submit" class="btn btn-primary mt-2 p-2 rounded">
+				Submit Comment
+			</button>
+		</form>
+	}
+
+
+</div>
+@section Scripts {
+	<script>
+		$(document).ready(function () {
+
+			$("#commentForm").on("submit", function (event) {
+				event.preventDefault();
+
+				// var userName = $("#UserName").val();
+				var content = $("#Content").val();
+				var postId = @Model.Id;
+
+				$.ajax({
+					url: '@Url.Action("AddComment", "Post")',
+					type: 'POST',
+					contentType: 'application/json',
+					data: JSON.stringify({
+						// UserName: userName,
+						Content: content,
+						PostId: postId
+					}),
+					success: function (response) {
+
+						$("#commentSection").append(`
+							<div class="card mb-3 shadow-sm">
+								<div class="card-body">
+									<h5 class="card-title">${response.username}</h5>
+									<p class="card-text text-muted">${response.commentDate}</p>
+									<p class="card-text">${response.content}</p>
+								</div>
+							</div>
+						`);
+
+						$("#commentForm")[0].reset();
+					}
+				});
+			});
+
+			
+
+		});
+		function deleteComment(commentId) {
+				if (!confirm("Are you sure you want to delete this comment?")) {
+					return;
+				}
+
+				$.ajax({
+					url: '@Url.Action("DeleteComment", "Post")',
+					type: 'POST',
+					data: { id: commentId },
+					success: function () {
+						$("#comment-" + commentId).remove();
+					},
+					error: function () {
+						alert("Something went wrong while deleting the comment.");
+					}
+				});
+			}
+	</script>
+}
