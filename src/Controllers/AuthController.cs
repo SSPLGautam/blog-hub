@@ -73,7 +73,6 @@ namespace BlogApp.Controllers
         {
             if (ModelState.IsValid)
             {
-
                 var user = await _userManager.FindByEmailAsync(model.Email);
 
                 if (user == null)
@@ -81,18 +80,33 @@ namespace BlogApp.Controllers
                     ModelState.AddModelError("", "Email or Password is Incorrect");
                     return View(model);
                 }
-                var signinResult = await _signInManager.PasswordSignInAsync(user, model.Password, false, false);
+
+               
+                if (await _userManager.IsLockedOutAsync(user))
+                {
+                    ModelState.AddModelError("", "Your account is locked. Please contact admin.");
+                    return View(model);
+                }
+
+                var signinResult = await _signInManager.PasswordSignInAsync(user, model.Password, false, true);
+
+                if (signinResult.IsLockedOut)
+                {
+                    ModelState.AddModelError("", "Your account is locked. Please contact admin.");
+                    return View(model);
+                }
 
                 if (!signinResult.Succeeded)
                 {
                     ModelState.AddModelError("", "Email or Password is Incorrect");
                     return View(model);
                 }
+
+                return RedirectToAction("Index", "Home");
             }
 
-            return RedirectToAction("Index", "Post");
+            return View(model);
         }
-
         [HttpGet]
         public async Task<IActionResult> Logout()
         {

@@ -3,115 +3,211 @@
     ViewData["Title"] = "Blog Posts";
 }
 
-<div class="text-center m-3 ">
-    @if (ViewBag.Categories != null)
-    {
-        @foreach (var category in ViewBag.Categories)
+<div class="container mt-4">
+       
+    <div class="text-center mb-3">
+        @if (ViewBag.Categories != null)
         {
-            <a asp-controller="Post"
-               asp-action="Index"
-               asp-route-categoryId="@category.Id"
-               class="badge bg-warning text-decoration-none ms-2">
-                @category.Name
-            </a>
+            @foreach (var category in ViewBag.Categories)
+            {
+                <a asp-controller="Post"
+                   asp-action="Index"
+                   asp-route-categoryId="@category.Id"
+                   asp-route-sortOrder="@ViewBag.SortOrder"
+                   class="badge bg-warning text-dark text-decoration-none me-2">
+                    @category.Name
+                </a>
+            }
         }
-    }
+    </div>
+
 
     @if (TempData["SuccessMessage"] != null)
     {
-        <div class="alert alert-success alert-dismissible fade show shadow-sm mt-3" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i>
+        <div class="alert alert-success alert-dismissible fade show">
             @TempData["SuccessMessage"]
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
-</div>
 
-@if (User.IsInRole("Admin"))
-{
-    <div class="text-end my-2">
-        <a class="btn btn-primary" asp-action="Create" asp-controller="Post">Create Post</a>
+    
+    <div class="d-flex justify-content-between align-items-center mb-3">
+
+        
+        @if (User.IsInRole("Admin") || User.IsInRole("Author"))
+        {
+            <a class="btn btn-primary"
+               asp-action="Create"
+               asp-controller="Post">
+                Create Post
+            </a>
+        }
+
+        
+        <form method="get" asp-action="Index" class="d-flex">
+
+            <input type="hidden" name="categoryId" value="@ViewBag.CategoryId" />
+
+            <select name="sortOrder"
+                    class="form-select"
+                    onchange="this.form.submit()">
+
+                <option value="newest" selected="@(ViewBag.SortOrder == "newest")">
+                    Newest
+                </option>
+
+                <option value="oldest" selected="@(ViewBag.SortOrder == "oldest")">
+                    Oldest
+                </option>
+
+                <option value="title_asc" selected="@(ViewBag.SortOrder == "title_asc")">
+                    Title A-Z
+                </option>
+
+                <option value="title_desc" selected="@(ViewBag.SortOrder == "title_desc")">
+                    Title Z-A
+                </option>
+
+                @* <option value="most_liked" selected="@(ViewBag.SortOrder == "most_liked")">
+                    Most Liked
+                </option> *@
+
+            </select>
+        </form>
+    </div>  
+    
+    <div class="d-flex justify-content-end mb-3">
+        <form method="get" asp-action="Index" class="d-flex align-items-center">
+
+            <input type="hidden" name="categoryId" value="@ViewBag.CategoryId" />
+            <input type="hidden" name="sortOrder" value="@ViewBag.SortOrder" />
+
+            <div class="form-check form-switch">
+                <input class="form-check-input"
+                       type="checkbox"
+                       id="mostLikedSwitch"
+                       name="is_most_Liked"
+                       value="true"
+                       onchange="this.form.submit()"
+                       @(ViewBag.IsMostLiked == true ? "checked" : "") />
+
+                <label class="form-check-label ms-2" for="mostLikedSwitch">
+                    Most Liked Post
+                </label>
+            </div>
+        </form>
     </div>
-}
+    @* post Card Code below *@
+    <div class="row">
+        @foreach (var post in Model)
+        {
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm">
 
-<div class="row row-cols-3 g-4">
-    @foreach (var post in Model)
-    {
-        <div class="col">
-            <div class="card h-100 border-0 shadow-lg rounded-1">
-                <img src="@post.FeatureImagePath"
-                     class="card-img-top"
-                     alt="@post.Title"
-                     style="height:300px; object-fit:cover" />
+                    <img src="@post.FeatureImagePath"
+                         class="card-img-top"
+                         style="height:250px; object-fit:cover;" />
 
-                <div class="card-body">
-                    <h5 class="card-title">@post.Title</h5>
-                    <p class="text-muted mb-2">
-                        Published on @post.PublishedDate.ToString("MMM dd, yyyy")
-                    </p>
+                    <div class="card-body">
 
-                    @{
-                        var content = BlogApp.Helper.RemoveHtmlTagHelper.RemoveHtmlTags(post.Content);
-                    }
+                        <h5>@post.Title</h5>
 
-                    <p class="card-text">
-                        @(content.Length > 100 ? content.Substring(0, 100) + "..." : content)
-                    </p>
+                        @if (!post.IsPublished)
+                        {
+                            <span class="badge bg-danger">Draft</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">Published</span>
+                        }
 
-                    <span class="badge bg-secondary">@post.Category?.Name</span>
-                </div>
+                        <p class="text-muted mt-2">
+                            Published on @post.PublishedDate.ToString("MMM dd, yyyy")
+                        </p>
 
-                <div class="card-footer d-flex justify-content-between align-items-center">
-                    <a asp-action="Detail"
-                       asp-controller="Post"
-                       asp-route-id="@post.Id"
-                       class="btn btn-primary btn-sm">
-                        Read More
-                    </a>
-                    <div class="text-muted">By @post.Authore</div>
+                        @{
+                            var content = BlogApp.Helper.RemoveHtmlTagHelper.RemoveHtmlTags(post.Content);
+                        }
+
+                        <p>
+                            @(content.Length > 100 ? content.Substring(0, 100) + "..." : content)
+                        </p>
+
+                        <span class="badge bg-secondary">
+                            @post.Category?.Name
+                        </span>
+                    </div>
+
+                    <div class="card-footer d-flex justify-content-between">
+
+                        <a asp-action="Detail"
+                           asp-route-id="@post.Id"
+                           class="btn btn-sm btn-primary">
+                            Read More
+                        </a>
+
+                        <div class="text-end">
+                            <div class="small text-muted">
+                                By @post.Authore
+                            </div>
+                            <div class="text-danger fw-bold">
+                                @post.Likes.Count() Likes
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             </div>
-        </div>
-    }
-</div>
+        }
+    </div>
 
-<!-- PAGINATION -->
-@if (ViewBag.TotalPages > 1)
-{
-    <nav class="mt-4">
-        <ul class="pagination justify-content-center">
+        @* Paganition Ui *@
+    @if (ViewBag.TotalPages > 1)
+    {
+        <nav>
+            <ul class="pagination justify-content-center">
 
-            <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
-                <a class="page-link"
-                   asp-action="Index"
-                   asp-route-page="@(ViewBag.CurrentPage - 1)"
-                   asp-route-categoryId="@ViewBag.CategoryId">
-                    Previous
-                </a>
-            </li>
-
-            @for (int i = 1; i <= ViewBag.TotalPages; i++)
-            {
-                <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                <!-- Previous -->
+                <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
                     <a class="page-link"
                        asp-action="Index"
-                       asp-route-page="@i"
-                       asp-route-categoryId="@ViewBag.CategoryId">
-                        @i
+                       asp-route-page="@(ViewBag.CurrentPage - 1)"
+                       asp-route-categoryId="@ViewBag.CategoryId"
+                       asp-route-sortOrder="@ViewBag.SortOrder"
+                       asp-route-is_most_Liked="@ViewBag.IsMostLiked">
+                        Previous
                     </a>
                 </li>
-            }
 
-            <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
-                <a class="page-link"
-                   asp-action="Index"
-                   asp-route-page="@(ViewBag.CurrentPage + 1)"
-                   asp-route-page="@(ViewBag.CurrentPage + 1)"
-                   asp-route-categoryId="@ViewBag.CategoryId">
-                    Next
-                </a>
-            </li>
+                <!-- Page Numbers -->
+                @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                {
+                    <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                        <a class="page-link"
+                           asp-action="Index"
+                           asp-route-page="@i"
+                           asp-route-categoryId="@ViewBag.CategoryId"
+                           asp-route-sortOrder="@ViewBag.SortOrder"
+                           asp-route-is_most_Liked="@ViewBag.IsMostLiked">
+                            @i
+                        </a>
+                    </li>
+                }
 
-        </ul>
-    </nav>
-}
+                <!-- Next -->
+                <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                    <a class="page-link"
+                       asp-action="Index"
+                       asp-route-page="@(ViewBag.CurrentPage + 1)"
+                       asp-route-categoryId="@ViewBag.CategoryId"
+                       asp-route-sortOrder="@ViewBag.SortOrder"
+                       asp-route-is_most_Liked="@ViewBag.IsMostLiked">
+                        Next
+                    </a>
+                </li>
+
+            </ul>
+        </nav>
+    }
+
+</div>

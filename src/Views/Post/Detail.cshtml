@@ -1,7 +1,15 @@
-﻿@model BlogApp.Models.Post
+﻿@using System.Security.Claims
+
+
+@model BlogApp.Models.Post
 
 @{
 	ViewData["Title"] = "Post Detail";
+	 var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var isOwner = Model.CreatedByUserId == currentUserId;
+    var isAdmin = User.IsInRole("Admin");
+    var isLiked = User.Identity.IsAuthenticated &&
+                  Model.Likes.Any(x => x.UserId == currentUserId);
 }
 
 <style>
@@ -19,15 +27,38 @@
 		margin-bottom: 20px;
 	}
 </style>
-@if (User.IsInRole("Admin"))
+@if (User.Identity.IsAuthenticated)
 {
-	<div class="text-end">
-		<a asp-action="Edit" asp-controller="Post" asp-route-id="@Model.Id" class="btn btn-secondary mx-3 my-3">Edit Post</a>
-		<a class=" btn btn-danger mx-3 my-3" asp-action="Delete" asp-controller="Post" asp-route-id="@Model.Id">Delete post</a>
+	@* var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier); *@
+
+	@if (User.Identity.IsAuthenticated && (isAdmin || isOwner))
+	{
+		<div class="text-end">
+
+			<a asp-action="Edit"
+			   asp-controller="Post"
+			   asp-route-id="@Model.Id"
+			   class="btn btn-secondary mx-2 my-3">
+				Edit Post
+			</a>
+
+			<a asp-action="Delete"
+			   asp-controller="Post"
+			   asp-route-id="@Model.Id"
+			   class="btn btn-danger mx-2 my-3">
+				Delete Post
+			</a>
+			    <button id="publishBtn"
+                class="btn @(Model.IsPublished ? "btn-warning" : "btn-success") mx-1">
+            @(Model.IsPublished ? "Unpublish" : "Publish")
+        </button>
 
 
-	</div>
+		</div>
+	}
 }
+
+
 <div class="content-wrapper">
 	<h1>@Model.Title</h1>
 	<p>
@@ -40,6 +71,36 @@
 	<div>@Html.Raw(Model.Content)</div>
 
 	<hr />
+	<hr />
+
+	@if (User.Identity.IsAuthenticated)
+	{
+		@* var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier); *@
+		@* var isLiked = Model.Likes.Any(x => x.UserId == currentUserId); *@
+
+		<div class="mb-3">
+			<button id="likeBtn"
+					class="btn btn-sm @(isLiked ? "btn-danger" : "btn-outline-danger")">
+				@if(isLiked){
+				<i class='fa-regular fa-heart'></i> <text>Unlike</text>
+				}
+				else{
+				<i class='fa-solid fa-heart'></i> <text>Like</text>
+				}
+			</button>
+
+			<span id="likeCount" class="ms-2 fw-bold">
+				@Model.Likes.Count() Likes
+			</span>
+		</div>
+	}
+	else
+	{
+		<div class="mb-3">
+			<span class="fw-bold">@Model.Likes.Count() Likes</span>
+		</div>
+	}
+
 	<h2>Comments</h2>
 	@if (Model.Comments != null && Model.Comments.Any())
 	{
@@ -86,61 +147,104 @@
 
 </div>
 @section Scripts {
-	<script>
-		$(document).ready(function () {
+    <script>
+        $(document).ready(function () {
 
-			$("#commentForm").on("submit", function (event) {
-				event.preventDefault();
 
-				// var userName = $("#UserName").val();
-				var content = $("#Content").val();
-				var postId = @Model.Id;
+            // ADD COMMENT
+          
+            $("#commentForm").on("submit", function (event) {
+                event.preventDefault();
 
-				$.ajax({
-					url: '@Url.Action("AddComment", "Post")',
-					type: 'POST',
-					contentType: 'application/json',
-					data: JSON.stringify({
-						// UserName: userName,
-						Content: content,
-						PostId: postId
-					}),
-					success: function (response) {
+                var content = $("#Content").val();
+                var postId = @Model.Id;
 
-						$("#commentSection").append(`
-							<div class="card mb-3 shadow-sm">
-								<div class="card-body">
-									<h5 class="card-title">${response.username}</h5>
-									<p class="card-text text-muted">${response.commentDate}</p>
-									<p class="card-text">${response.content}</p>
-								</div>
-							</div>
-						`);
+                $.ajax({
+                    url: '@Url.Action("AddComment", "Post")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        Content: content,
+                        PostId: postId
+                   
+                    }),
+                    success: function (response) {
 
-						$("#commentForm")[0].reset();
-					}
-				});
-			});
+                        $("#commentSection").append(`
+                            <div class="card mb-3 shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="card-title">${response.username}</h5>
+                                    <p class="card-text text-muted">${response.commentDate}</p>
+                                    <p class="card-text">${response.content}</p>
+                                </div>
+                            </div>
+                        `);
 
-			
+                        $("#commentForm")[0].reset();
+                    }
+                });
+            });
 
-		});
-		function deleteComment(commentId) {
-				if (!confirm("Are you sure you want to delete this comment?")) {
-					return;
-				}
 
-				$.ajax({
-					url: '@Url.Action("DeleteComment", "Post")',
-					type: 'POST',
-					data: { id: commentId },
-					success: function () {
-						$("#comment-" + commentId).remove();
-					},
-					error: function () {
-						alert("Something went wrong while deleting the comment.");
-					}
-				});
-			}
-	</script>
+        
+            // LIKE FUNCTION
+          
+            $("#likeBtn").click(function () {
+
+                $.post("/Post/ToggleLike",
+                    { postId: @Model.Id },
+                    function (response) {
+
+                        $("#likeCount").text(response.count + " Likes");
+
+                        if (response.liked) {
+                            $("#likeBtn")
+                                .removeClass("btn-outline-danger")
+                                .addClass("btn-danger")
+                                .html("<i class='fa-regular fa-heart'></i> Unlike");
+                        } else {
+                            $("#likeBtn")
+                                .removeClass("btn-danger")
+                                .addClass("btn-outline-danger")
+                                .html("<i class='fa-solid fa-heart'></i> Like");
+                        }
+                    });
+            });
+
+			// publish function
+         
+            $("#publishBtn").click(function () {
+
+                $.post("/Post/TogglePublish",
+                    { id : @Model.Id },
+                    function () {
+                        location.reload();
+                    });
+
+            });
+
+        });
+
+
+  //delete comment function
+        function deleteComment(commentId) {
+
+            if (!confirm("Are you sure you want to delete this comment?")) {
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("DeleteComment", "Post")',
+                type: 'POST',
+                data: { id: commentId },
+                success: function () {
+                    location.reload();
+                },
+                error: function () {
+                    alert("Something went wrong while deleting the comment.");
+                }
+            });
+        }
+
+    </script>
 }

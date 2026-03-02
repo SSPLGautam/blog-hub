@@ -33,6 +33,7 @@
 			<div asp-validation-summary="All" class="text-danger"></div>
 		</div>
 		<input asp-for="post.Id" hidden />
+		<input asp-for="post.CreatedByUserId" hidden />
 		<div class="form-group">
 			<label asp-for="post.Title"></label>
 			<input asp-for="post.Title" class="form-control" />

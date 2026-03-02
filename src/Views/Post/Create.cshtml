@@ -1,9 +1,9 @@
 ﻿@using BlogApp.ViewModel
-@model PostViewModel
+@model CreatePostViewModel
 
-@{
+@* @{
 	ViewData["Title"] = "Create post";
-}
+} *@
 
 <style>
 	.content-wrapper{
@@ -31,30 +31,31 @@
 		<div class="Validation-summary">
 			<div asp-validation-summary="All "class="text-danger"></div>
 		</div>
+	
 		<div class="form-group">
-			<label asp-for="post.Title"></label>
-			<input asp-for="post.Title" class="form-control" />
-			<span asp-validation-for="post.Title" class="text-danger"></span>
+			<label asp-for="Title"></label>
+			<input asp-for="Title" class="form-control" />
+			<span asp-validation-for="Title" class="text-danger"></span>
 		</div>
 
 		<div class="form-group">
-			<label asp-for="post.CategoryId"></label>
-			<select asp-for="post.CategoryId" asp-items="Model.Categories" class="form-control">
+			<label asp-for="CategoryId"></label>
+			<select asp-for="CategoryId" asp-items="Model.Categories" class="form-control">
 				<option value="">Select Category</option>
 			</select>
-			<span asp-validation-for="post.CategoryId" class="text-danger"></span>
+			<span asp-validation-for="CategoryId" class="text-danger"></span>
 		</div>
 
 		<div class="form-group">
-			<label asp-for="post.Authore">Author</label>
-			<input asp-for="post.Authore" class="form-control" />
-			<span asp-validation-for="post.Authore" class="text-danger"></span>
+			<label asp-for="Authore">Author</label>
+			<input asp-for="Authore" class="form-control" />
+			<span asp-validation-for="Authore" class="text-danger"></span>
 		</div>
 
 		<div class="form-group">
-			<label asp-for="post.Content"></label>
-			<textarea asp-for="post.Content" class="form-control" rows="5"></textarea>
-			<span asp-validation-for="post.Content" class="text-danger"></span>
+			<label asp-for="Content"></label>
+			<textarea asp-for="Content" class="form-control" rows="5"></textarea>
+			<span asp-validation-for="Content" class="text-danger"></span>
 		</div>
 
 		<div class="form-group">

@@ -1,0 +1,114 @@
+﻿@model List<BlogApp.ViewModel.UserViewModel>
+
+@{
+    ViewData["Title"] = "User Management";
+}
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<h2 class="mb-4">User Role & Lock Management</h2>
+
+<table class="table table-bordered table-striped table-hover align-middle">
+    <thead class="table-dark">
+        <tr>
+            <th>Email</th>
+            <th>Status</th>
+            <th>Lock / Unlock</th>
+            <th>Assign Role</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var user in Model)
+        {
+            <tr>
+                <form method="post">
+
+                   
+                <td>
+                    @user.Email
+                    <input type="hidden" name="userId" value="@user.Id" />
+                </td>
+
+			
+				<td>
+                    @if (user.IsLocked)
+                    {
+                        <span class="badge bg-danger">Locked</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success">Active</span>
+                    }
+                </td>
+
+            
+                <td>
+                    @if (user.IsLocked)
+                    {
+                        <button type="submit"
+                                formaction="@Url.Action("UnlockUser", "Admin")"
+                                class="btn btn-success btn-sm">
+                            Unlock
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="submit"
+                                formaction="@Url.Action("LockUser", "Admin")"
+                                class="btn btn-danger btn-sm">
+                            Lock
+                        </button>
+                    }
+                </td>
+
+ 
+                <td>
+                    <div class="form-check">
+                        <input class="form-check-input"
+                               type="checkbox"
+                               name="roles"
+                               value="User"
+                               @(user.UserRoles.Contains("User") ? "checked" : "") />
+                        <label class="form-check-label">User</label>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input"
+                               type="checkbox"
+                               name="roles"
+                               value="Author"
+                               @(user.UserRoles.Contains("Author") ? "checked" : "") />
+                        <label class="form-check-label">Author</label>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input"
+                               type="checkbox"
+                               name="roles"
+                               value="Admin"
+                               @(user.UserRoles.Contains("Admin") ? "checked" : "") />
+                        <label class="form-check-label">Admin</label>
+                    </div>
+                </td>
+
+                <td>
+                    <button type="submit"
+                            formaction="@Url.Action("AssignRole", "Admin")"
+                            class="btn btn-primary btn-sm">
+                        Assign
+                    </button>
+                </td>
+
+                </form>
+            </tr>
+        }
+    </tbody>
+</table>

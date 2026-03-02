@@ -1,5 +1,7 @@
 using System.Linq.Expressions;
 using BlogApp.Data;
+using BlogApp.Repository;
+using BlogApp.Service;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,24 +18,64 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
     options.Password.RequireUppercase = false;
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequiredLength = 6;
-
+    options.Lockout.AllowedForNewUsers = true;
     options.User.RequireUniqueEmail = true;
 })
 .AddEntityFrameworkStores<AppDbContext>()
-.AddDefaultTokenProviders();
+.AddDefaultTokenProviders();                                      
 builder.Services.ConfigureApplicationCookie(options =>
 
-{
+{ 
     options.LoginPath = "/Auth/Login";
     options.AccessDeniedPath = "/Auth/AccessDenied";
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
     options.SlidingExpiration = true;
 
 });
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Admin", policy =>
+        policy.RequireRole("Admin"));
+});
 
+//Add  Services for Repository and Service
+// Generic Repo
+builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+
+// Custom Repos 
+builder.Services.AddScoped<ICommentRepository, CommentRepository>();
+builder.Services.AddScoped<ILikeRepository, LikeRepository>();
+
+// Services
+builder.Services.AddScoped<IPostService, PostService>();          
+builder.Services.AddScoped<ICommentService, CommentService>();
+builder.Services.AddScoped<ILikeService, LikeService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 var app = builder.Build();
 
 try
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+        string[] roles = { "Admin", "Author", "User" };
+
+        foreach (var role in roles)
+        {
+            if (!await roleManager.RoleExistsAsync(role))
+            {
+                await roleManager.CreateAsync(new IdentityRole(role));
+            }
+        }
+    }
+}
+catch (Exception ex)
+{
+    // log error if needed
+}
+
+try     
 {
     using (var scope = app.Services.CreateScope())
     {
@@ -89,7 +131,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting();
-
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();

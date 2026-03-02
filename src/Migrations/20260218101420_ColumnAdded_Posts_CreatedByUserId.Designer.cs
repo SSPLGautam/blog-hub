@@ -4,6 +4,7 @@ using BlogApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BlogApp.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260218101420_ColumnAdded_Posts_CreatedByUserId")]
+    partial class ColumnAdded_Posts_CreatedByUserId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -118,9 +121,6 @@ namespace BlogApp.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("IsPublished")
-                        .HasColumnType("bit");
-
                     b.Property<DateTime>("PublishedDate")
                         .HasColumnType("datetime2");
 
@@ -146,7 +146,6 @@ namespace BlogApp.Migrations
                             Content = "Content of Health Post 1",
                             CreatedByUserId = "df194139-131d-4147-bda8-4bb661e3eec3",
                             FeatureImagePath = "images/Health1.jpg",
-                            IsPublished = false,
                             PublishedDate = new DateTime(2023, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Title = "Health Post 1"
                         },
@@ -158,7 +157,6 @@ namespace BlogApp.Migrations
                             Content = "Content of Teach Post 1",
                             CreatedByUserId = "df194139-131d-4147-bda8-4bb661e3eec3",
                             FeatureImagePath = "images/Teach.jpg",
-                            IsPublished = false,
                             PublishedDate = new DateTime(2024, 6, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Title = "Teach Post 1"
                         },
@@ -170,34 +168,9 @@ namespace BlogApp.Migrations
                             Content = "Content of LifeStyle Post 1",
                             CreatedByUserId = "df194139-131d-4147-bda8-4bb661e3eec3",
                             FeatureImagePath = "images/download.jpg",
-                            IsPublished = false,
                             PublishedDate = new DateTime(2025, 12, 9, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Title = "LifeStyle Post 1"
                         });
-                });
-
-            modelBuilder.Entity("BlogApp.Models.PostLike", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("PostId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PostId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("PostLikes");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -428,25 +401,6 @@ namespace BlogApp.Migrations
                     b.Navigation("CreatedByUser");
                 });
 
-            modelBuilder.Entity("BlogApp.Models.PostLike", b =>
-                {
-                    b.HasOne("BlogApp.Models.Post", "Post")
-                        .WithMany("Likes")
-                        .HasForeignKey("PostId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Post");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -506,8 +460,6 @@ namespace BlogApp.Migrations
             modelBuilder.Entity("BlogApp.Models.Post", b =>
                 {
                     b.Navigation("Comments");
-
-                    b.Navigation("Likes");
                 });
 #pragma warning restore 612, 618
         }

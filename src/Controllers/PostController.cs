@@ -1,242 +1,206 @@
-﻿using System.Diagnostics.Eventing.Reader;
-using BlogApp.Data;
+﻿using System.Security.Claims;
 using BlogApp.Models;
+using BlogApp.Repository;
+using BlogApp.Service;
 using BlogApp.ViewModel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace BlogApp.Controllers
 {
-
     [Route("[Controller]")]
-
     public class PostController : Controller
     {
-        private readonly AppDbContext _context;
-        private readonly string[] _allowExtension = { ".jpg", ".png", ".jpeg", ".webp" };
-        private readonly IWebHostEnvironment _webHostEnvironment;
-        public PostController(AppDbContext context, IWebHostEnvironment webHostEnvironment)
+        private readonly IPostService _postService;
+        private readonly ICommentService _commentService;
+        private readonly ILikeService _likeService;
+        private readonly IGenericRepository<Category> _categoryRepository;
+
+        public PostController(
+            IPostService postService,
+            ICommentService commentService,
+            ILikeService likeService,
+            IGenericRepository<Category> categoryRepository)
         {
-            _context = context;
-            _webHostEnvironment = webHostEnvironment;
+            _postService = postService;
+            _commentService = commentService;
+            _likeService = likeService;
+            _categoryRepository = categoryRepository;
         }
+
+  
         [HttpGet("")]
-        public IActionResult Index(int? categoryId, int page = 1)
+        public async Task<IActionResult> Index(
+            int? categoryId,
+            bool is_most_Liked = false,
+            string sortOrder = "newest",
+            int page = 1)
         {
-            int pageSize = 6; // posts per page
+            int pageSize = 6;
+            string userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            bool isAdmin = User.IsInRole("Admin");
 
-            var postQuery = _context.Posts
-                                    .Include(p => p.Category)
-                                    .AsQueryable();
+            var result = await _postService.GetPostsAsync(
+                categoryId,
+                is_most_Liked,
+                sortOrder,
+                page,
+                pageSize,
+                userId,
+                isAdmin);
 
-            if (categoryId.HasValue)
-            {
-                postQuery = postQuery.Where(p => p.CategoryId == categoryId);
-            }
-
-            int totalPosts = postQuery.Count();
-
-            var posts = postQuery
-                        .OrderByDescending(p => p.PublishedDate)
-                        .Skip((page - 1) * pageSize)
-                        .Take(pageSize)
-                        .ToList();
-
+            ViewBag.Categories = _categoryRepository.GetAll().ToList();
             ViewBag.CurrentPage = page;
-            ViewBag.TotalPages = (int)Math.Ceiling(totalPosts / (double)pageSize);
+            ViewBag.TotalPages = (int)Math.Ceiling((double)result.totalCount / pageSize);
             ViewBag.CategoryId = categoryId;
+            ViewBag.SortOrder = sortOrder;
+            ViewBag.IsMostLiked = is_most_Liked;
 
-            ViewBag.Categories = _context.Categories.ToList();
-
-            return View(posts);
+            return View(result.posts);
         }
 
-
+    
         [HttpGet("Detail")]
-
         public async Task<IActionResult> Detail(int id)
         {
-            if (id == null)
-            {
+            var post = await _postService.GetPostDetailAsync(id);
+
+            if (post == null)
                 return NotFound();
 
-            }
-            var post = _context.Posts.Include(p => p.Category).Include(p => p.Comments)
-              .FirstOrDefault(p => p.Id == id);
-            if (post == null)
-            {
-                return NotFound();
-            }
             return View(post);
         }
 
-
         [HttpGet("Create")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Author")]
         public IActionResult Create()
         {
-            var postViewModel = new PostViewModel();
-            postViewModel.Categories = _context.Categories.Select(c =>
-            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
-            {
-                Value = c.Id.ToString(),
-                Text = c.Name,
-
-            }
-            ).ToList();
-            return View(postViewModel);
+            var vm = new CreatePostViewModel();
+            LoadCategories(vm);
+            return View(vm);
         }
 
         [HttpPost("Create")]
-        public async Task<IActionResult> Create(PostViewModel postViewModel)
-        {
-            if (ModelState.IsValid)
-            {
-                var inputFileExtension = Path.GetExtension(postViewModel.FeatureImage.FileName).ToLower();
-                bool isAllowed = _allowExtension.Contains(inputFileExtension);
-
-
-                if (!isAllowed)
-                {
-                    ModelState.AddModelError("", "Invalid Image Format. Allowed: .jpg, .jpeg, .png, .webp");
-                    return View(postViewModel);
-                }
-
-                postViewModel.post.FeatureImagePath =
-                    await UploadFileFolder(postViewModel.FeatureImage);
-
-                await _context.Posts.AddAsync(postViewModel.post);
-                await _context.SaveChangesAsync();
-
-                return RedirectToAction("Index");
-            }
-            postViewModel = new PostViewModel();
-            postViewModel.Categories = _context.Categories.Select(c =>
-            new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
-            {
-                Value = c.Id.ToString(),
-                Text = c.Name,
-
-
-            }
-            ).ToList();
-
-            return View(postViewModel);
-        }
-        [Authorize(Roles = "Admin")]
-        [HttpGet("Edit")]
-        public async Task<IActionResult> Edit(int id)
-        {
-
-            if (id == null) return NotFound();
-
-            var postFromDb = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id);
-            if (postFromDb == null) return NotFound();
-            EditPostViewModel editViewModel = new EditPostViewModel
-            {
-
-                post = postFromDb,
-                Categories = _context.Categories.Select(c =>
-                   new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
-                   {
-                       Value = c.Id.ToString(),
-                       Text = c.Name,
-                   }
-
-
-
-              ).ToList()
-            };
-            return View(editViewModel);
-        }
-        [HttpPost("Edit")]
-        public async Task<IActionResult> Edit(EditPostViewModel editViewModel)
+        [Authorize(Roles = "Admin,Author")]
+        public async Task<IActionResult> Create(CreatePostViewModel vm)
         {
             if (!ModelState.IsValid)
             {
-                return View(editViewModel);
+                LoadCategories(vm);
+                return View(vm);
             }
-            var postFromDb = await _context.Posts.AsNoTracking().FirstOrDefaultAsync(p => p.Id == editViewModel.post.Id);
-            if (postFromDb == null) return NotFound();
 
-            if (editViewModel.FeatureImage != null)
+            try
             {
-
-                var inputFileExtension = Path.GetExtension(editViewModel.FeatureImage.FileName).ToLower();
-                bool isAllowed = _allowExtension.Contains(inputFileExtension);
-
-
-                if (!isAllowed)
+                string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null)
                 {
-                    ModelState.AddModelError("", "Invalid Image Format. Allowed: .jpg, .jpeg, .png, .webp");
-                    return View(editViewModel);
+                   
+                    return Forbid();
                 }
-                var existingFilePath = Path.Combine(_webHostEnvironment.WebRootPath, "images", Path.GetFileName(postFromDb.FeatureImagePath));
-                if (System.IO.File.Exists(existingFilePath))
-                {
-                    System.IO.File.Delete(existingFilePath);
-                }
-                editViewModel.post.FeatureImagePath = await UploadFileFolder(editViewModel.FeatureImage);
 
+                await _postService.CreatePostAsync(vm, userId);
+                return RedirectToAction("Index");
             }
-            else
+            catch (Exception ex)
             {
-                editViewModel.post.FeatureImagePath = postFromDb.FeatureImagePath;
+                ModelState.AddModelError("", ex.Message);
+                LoadCategories(vm);
+                return View(vm);
             }
-            _context.Posts.Update(editViewModel.post);
-            await _context.SaveChangesAsync();
-            return RedirectToAction("Index");
         }
+
+        [Authorize(Roles = "Admin,Author")]
+        [HttpGet("Edit")]
+        public async Task<IActionResult> Edit(int id)
+        {
+            var post = await _postService.GetPostDetailAsync(id);
+            if (post == null)
+                return NotFound();
+
+            return View(new EditPostViewModel { post = post });
+        }
+
+        [Authorize(Roles = "Admin,Author")]
+        [HttpPost("Edit")]
+        public async Task<IActionResult> Edit(EditPostViewModel vm)
+        {
+            if (!ModelState.IsValid)
+                return View(vm);
+
+            try
+            {
+                string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                 if (userId == null)
+                {
+                    
+                    return Forbid();
+                }
+
+                bool isAdmin = User.IsInRole("Admin");
+
+                await _postService.EditPostAsync(vm, userId, isAdmin);
+                return RedirectToAction("Index");
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", ex.Message);
+                return View(vm);
+            }
+        }
+
+    
         [Authorize(Roles = "Admin")]
         [HttpGet("Delete")]
         public async Task<IActionResult> Delete(int id)
         {
+            var post = await _postService.GetPostDetailAsync(id);
+            if (post == null)
+                return NotFound();
 
-            var postFromDb = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id);
-            if (postFromDb == null) return NotFound();
-            return View(postFromDb);
-
+            return View(post);
         }
 
         [HttpPost("Delete")]
-        public async Task<IActionResult> DeleteConfrim(int id)
+        public async Task<IActionResult> DeleteConfirm(int id)
         {
-            if (id == null) return NotFound();
-            var postFromDb = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id);
-
-            if (string.IsNullOrEmpty(postFromDb.FeatureImagePath))
+            try
             {
-
-                var existingFilePath = Path.Combine(_webHostEnvironment.WebRootPath, "images", Path.GetFileName(postFromDb.FeatureImagePath));
-                if (System.IO.File.Exists(existingFilePath))
-                {
-                    System.IO.File.Delete(existingFilePath);
-                }
-
+                await _postService.DeletePostAsync(id);
+                TempData["SuccessMessage"] = "Post deleted successfully!";
             }
-            _context.Posts.Remove(postFromDb);
-            await _context.SaveChangesAsync();
-            TempData["SuccessMessage"] = "Post deleted successfully!";
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+
             return RedirectToAction("Index");
-
-
         }
 
+       
         [HttpPost("AddComment")]
         [Authorize]
         public async Task<IActionResult> AddComment([FromBody] Comment comment)
         {
-            if (comment == null)
+        
+            string? userName = User.Identity?.Name;
+
+            
+            if (string.IsNullOrWhiteSpace(userName))
             {
-                return BadRequest();
+              
+                return Forbid();
             }
-            comment.UserName = User.Identity.Name;  //add ab Now
-            comment.CommentDate = DateTime.Now;
 
-            _context.Comments.Add(comment);
-            await _context.SaveChangesAsync();
+         
+            await _commentService.AddCommentAsync(comment, userName!);
 
+         
             return Json(new
             {
                 username = comment.UserName,
@@ -244,58 +208,75 @@ namespace BlogApp.Controllers
                 commentDate = comment.CommentDate.ToString("dd MMM yyyy")
             });
         }
+
         [HttpPost("DeleteComment")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Author")]
         public async Task<IActionResult> DeleteComment(int id)
         {
-            var comment = await _context.Comments.FindAsync(id);
-
-            if (comment == null)
-            {
-                return NotFound();
-            }
-
-            _context.Comments.Remove(comment);
-            await _context.SaveChangesAsync();
-
+            await _commentService.DeleteCommentAsync(id);
             return Ok();
         }
 
-
-        private async Task<string> UploadFileFolder(IFormFile file)
+        [HttpPost("ToggleLike")]
+        [Authorize]
+        public async Task<IActionResult> ToggleLike(int postId)
         {
-            var inputFileExtension = Path.GetExtension(file.FileName);
-            var fileName = Guid.NewGuid().ToString() + inputFileExtension;
-            var wwwRootPath = _webHostEnvironment.WebRootPath;
-            var imagesFolderPath = Path.Combine(wwwRootPath, "images");
+            string? userIdNullable = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (!Directory.Exists(imagesFolderPath))
+            if (string.IsNullOrEmpty(userIdNullable))
             {
-
-                Directory.CreateDirectory(imagesFolderPath);
-
+               
+                return Forbid();
             }
 
-            var filePath = Path.Combine(imagesFolderPath, fileName);
-            try
+            string userId = userIdNullable;
+
+            var result = await _likeService.ToggleLikeAsync(postId, userId);
+
+            return Json(new
             {
-                await using (var fileStrean = new FileStream(filePath, FileMode.Create))
-                {
-
-                    await file.CopyToAsync(fileStrean);
-                }
-            }
-            catch (Exception ex)
-            {
-
-                return "Error uploading Image " + ex.Message;
-
-
-            }
-            return "/images/" + fileName;
+                liked = result.liked,
+                count = result.count
+            });
         }
 
 
+        [Authorize(Roles = "Admin,Author")]
+        [HttpPost("TogglePublish")]
+        public async Task<IActionResult> TogglePublish(int id)
+        {
+            try
+            {
+              
+                string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+             
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Forbid();
+                }
+
+                bool isAdmin = User.IsInRole("Admin");
+
+                await _postService.TogglePublishAsync(id, userId, isAdmin);
+                return RedirectToAction("Detail", new { id });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+        }
+
+   
+        private void LoadCategories(CreatePostViewModel vm)
+        {
+            var categories = _categoryRepository.GetAll().ToList();
+
+            vm.Categories = categories.Select(c => new SelectListItem
+            {
+                Value = c.Id.ToString(),
+                Text = c.Name
+            }).ToList();
+        }
     }
 }
-
