@@ -1,3 +1,15 @@
 <Solution>
-  <Project Path="BlogApp.csproj" />
+  <Folder Name="/Api/">
+    <Project Path="Api/BlogApp.Api/BlogApp.Api.csproj" />
+  </Folder>
+  <Folder Name="/BusinessLogic/">
+    <Project Path="BusinessLogic/BlogApp.Core/BlogApp.Core.csproj" />
+    <Project Path="BusinessLogic/BlogApp.Services/BlogApp.Services.csproj" />
+  </Folder>
+  <Folder Name="/Infrastructure/">
+    <Project Path="Infrastructure/BlogApp.Data/BlogApp.Data.csproj" />
+  </Folder>
+  <Folder Name="/Presentation/">
+    <Project Path="Presentation/BlogApp.Web/BlogApp.Web.csproj" />
+  </Folder>
 </Solution>

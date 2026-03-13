@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "BlogApp.Web.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "..\\Api\\BlogApp.Api\\BlogApp.Api.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]
