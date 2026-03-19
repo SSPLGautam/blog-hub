@@ -33,14 +33,13 @@ namespace BlogApp.Models
 
         public Category Category { get; set; }
 
-
         public ICollection<Comment> Comments { get; set; } = new List<Comment>();
 
-        public string ?CreatedByUserId { get; set; }
+        public string? CreatedByUserId { get; set; }
 
         [ForeignKey(nameof(CreatedByUserId))]
-        public IdentityUser ? CreatedByUser { get; set; }
-        
+        public IdentityUser? CreatedByUser { get; set; }
+
         public ICollection<PostLike> Likes { get; set; } = new List<PostLike>();
 
         public bool IsPublished { get; set; } = false;

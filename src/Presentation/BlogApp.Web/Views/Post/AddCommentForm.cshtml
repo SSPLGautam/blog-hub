@@ -1,0 +1,26 @@
+﻿@model BlogApp.Web.ViewModel.AddCommentFormViewModel
+
+<h4>Add a Comment</h4>
+
+<form id="commentForm">
+
+    <input type="hidden" id="PostId" value="" />
+
+    <div class="form-group">
+
+        <label for="Content">Content</label>
+
+        <textarea id="Content"
+                  name="Content"
+                  rows="3"
+                  required
+                  class="form-control"></textarea>
+
+    </div>
+
+    <button type="submit"
+            class="btn btn-primary mt-2 p-2 rounded">
+        Submit Comment
+    </button>
+
+</form>

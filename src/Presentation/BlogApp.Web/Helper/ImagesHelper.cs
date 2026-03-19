@@ -1,6 +1,4 @@
-﻿using BlogApp.Models;
-using Microsoft.AspNetCore.Http;
-
+﻿
 namespace BlogApp.Web.Helper
 {
     public class ImagesHelper
@@ -10,7 +8,7 @@ namespace BlogApp.Web.Helper
         public static string UploadFile(IFormFile file)
         {
             string fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
-            string folderPath = Path.Combine("wwwroot", "images");   
+            string folderPath = Path.Combine("wwwroot", "images");
 
             var ext = Path.GetExtension(file.FileName).ToLower();
 
@@ -28,6 +26,37 @@ namespace BlogApp.Web.Helper
             return "/images/" + fileName;
         }
 
+        public static void DeleteFile(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath))
+                return;
+
+            var absolutePath = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                "wwwroot",
+                filePath.TrimStart('/')
+            );
+            try
+            {
+                if (File.Exists(absolutePath))
+                {
+                    File.SetAttributes(absolutePath, FileAttributes.Normal);
+                    File.Delete(absolutePath);
+                }
+            }
+            catch (IOException ex)
+            {
+                Console.WriteLine("File delete error: " + ex.Message);
+
+            }
+        }
+   
+        public static string GetImagePath(IFormFile file)
+        {
+            return $@"/images/{file.FileName}";
+        }
+
+
         public static IFormFile? GetImage(string filePath)
         {
             if (string.IsNullOrEmpty(filePath))
@@ -39,26 +68,20 @@ namespace BlogApp.Web.Helper
                 filePath.TrimStart('/')
             );
 
-            var fileInfo = new FileInfo(absolutePath);
-
-            if (!fileInfo.Exists)
+            if (!File.Exists(absolutePath))
                 return null;
 
-            var stream = new FileStream(absolutePath, FileMode.Open, FileAccess.Read);
+            byte[] fileBytes = File.ReadAllBytes(absolutePath);
 
-            var formFile = new FormFile(
+            var stream = new MemoryStream(fileBytes);
+
+            return new FormFile(
                 stream,
                 0,
-                fileInfo.Length,
+                fileBytes.Length,
                 "file",
-                fileInfo.Name)
-            {
-                Headers = new HeaderDictionary(),
-                ContentType = "application/octet-stream",
-                ContentDisposition = $"form-data; name=\"file\"; filename=\"{fileInfo.Name}\""
-            };
-
-            return formFile;
+                Path.GetFileName(absolutePath)
+            );
         }
     }
 }

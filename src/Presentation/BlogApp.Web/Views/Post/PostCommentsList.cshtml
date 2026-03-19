@@ -1,0 +1,47 @@
+﻿@using BlogApp.ViewModels
+@model List<CommentViewModel>
+
+<h2>Comments</h2>
+
+@if (Model != null && Model.Any())
+{
+    foreach (var comment in Model)
+    {
+        <div class="card mb-3 shadow-sm comment-card" data-id="@comment.Id">
+
+            <div class="card-body">
+
+                <h5 class="card-title">
+                    @(comment.UserName ?? "Unknown User")
+                </h5>
+
+                <p class="text-muted">
+                    @comment.CommentDate.ToString("MMM dd yyyy")
+                </p>
+
+                <p>
+                    @comment.Content
+                </p>
+
+                @if (comment.CanDelete)
+                {
+                    <button class="btn btn-sm btn-danger deleteComment"
+                            data-id="@comment.Id" data-post-id="@comment.PostId">
+                        Delete
+                    </button>
+                }
+
+            </div>
+
+        </div>
+    }
+}
+else
+{
+    <p class="text-muted">
+        No comments yet. Be the first to comment.
+    </p>
+}
+
+<hr />
+

@@ -1,14 +1,15 @@
-using BlogApp.Data;
+using System.Reflection;
 using BlogApp.Core.Repositories;
 using BlogApp.Core.Services;
+using BlogApp.Data;
+using BlogApp.Data.Repositories;
 using BlogApp.Services;
-
+using BlogApp.Web.AutoMapper.Profiles;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using BlogApp.Data.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.Services.AddAutoMapper(_ => { }, typeof(Program).GetTypeInfo().Assembly);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -39,6 +40,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("Admin", policy =>
         policy.RequireRole("Admin"));
 });
+
 
 //Add  Services for Repository and Service
 // Generic Repo

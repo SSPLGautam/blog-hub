@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using BlogApp.Core.Repositories;
 using BlogApp.Core.Services;
+using BlogApp.Data.Repositories;
 using BlogApp.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -13,32 +14,39 @@ namespace BlogApp.Services
         private readonly IGenericRepository<Post> _postRepository;
         private readonly IHostEnvironment _env;
         private readonly IHttpContextAccessor _httpContextAccessor;
-
+        private readonly IGenericRepository<PostLike> _likeRepository;
+        private readonly IGenericRepository<Comment> _commentRepository;
         private readonly string[] _allowedExt = { ".jpg", ".png", ".jpeg", ".webp" };
 
         public PostService(
             IGenericRepository<Post> postRepository,
+            IGenericRepository<PostLike> likeRepository,
+            IGenericRepository<Comment> commentRepository,
             IHostEnvironment env,
             IHttpContextAccessor httpContextAccessor)
         {
             _postRepository = postRepository;
+            _likeRepository = likeRepository;
+            _commentRepository = commentRepository;
             _env = env;
             _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<(List<Post> posts, int totalCount)> GetPostsAsync(
-        int? categoryId,
-        bool isMostLiked,
-        string sortOrder,
-        int page,
-        int pageSize,
-        string userId,
-        bool isAdmin)
+            int? categoryId,
+            bool isMostLiked,
+            string sortOrder,
+            int page,
+            int pageSize,
+            string userId,
+            bool isAdmin)
         {
             var query = _postRepository.GetAll();
 
             query = query.Include(p => p.Category)
-                         .Include(p => p.Likes);
+                .Include(p => p.Likes)
+                .Include(p => p.Comments)
+                .ThenInclude(c => c.User);
 
             if (!isAdmin)
             {
@@ -79,26 +87,13 @@ namespace BlogApp.Services
         {
             return await _postRepository.GetAll()
                 .Include(p => p.Category)
-                .Include(p => p.Comments)
+
                 .Include(p => p.Likes)
+                .Include(p => p.Comments)
+                  .ThenInclude(c => c.User)
                 .FirstOrDefaultAsync(p => p.Id == id);
         }
 
-        //public async Task CreatePostAsync(CreatePostViewModel vm, string userId)
-        //{
-        //    var ext = Path.GetExtension(vm.FeatureImage.FileName).ToLower();
-
-        //    if (!_allowedExt.Contains(ext))
-        //        throw new Exception("Invalid Image Format");
-
-        //    var post = vm.ToDataModel(vm);
-
-        //    post.FeatureImagePath = await UploadFile(vm.FeatureImage);
-        //    post.CreatedByUserId = userId;
-
-        //    await _postRepository.AddAsync(post);
-        //    await _postRepository.SaveAsync();
-        //}
         public async Task CreatePostAsync(Post post)
         {
             var userId = _httpContextAccessor?.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -137,6 +132,7 @@ namespace BlogApp.Services
             _postRepository.Update(post);
             await _postRepository.SaveAsync();
         }
+
         public async Task DeletePostAsync(int id)
         {
             var post = await _postRepository.GetByIdAsync(id);
@@ -144,11 +140,33 @@ namespace BlogApp.Services
             if (post == null)
                 throw new Exception("Post not found");
 
+
+            var likes = _likeRepository.GetAll()
+                .Where(l => l.PostId == id)
+                .ToList();
+
+            if (likes.Any())
+            {
+                foreach (var like in likes)
+                    _likeRepository.Delete(like);
+            }
+
+
+            var comments = _commentRepository.GetAll()
+                .Where(c => c.PostId == id)
+                .ToList();
+
+            if (comments.Any())
+            {
+                foreach (var comment in comments)
+                    _commentRepository.Delete(comment);
+            }
             _postRepository.Delete(post);
+
             await _postRepository.SaveAsync();
         }
-      
-        
+
+
         public async Task TogglePublishAsync(int id, string userId, bool isAdmin)
         {
             var post = await _postRepository.GetByIdAsync(id);
@@ -165,7 +183,6 @@ namespace BlogApp.Services
             await _postRepository.SaveAsync();
         }
 
-
         private async Task<string> UploadFile(Microsoft.AspNetCore.Http.IFormFile file)
         {
             string fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
@@ -181,5 +198,6 @@ namespace BlogApp.Services
 
             return "/images/" + fileName;
         }
+      
     }
 }
