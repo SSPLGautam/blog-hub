@@ -1,21 +1,21 @@
-﻿using BlogApp.Models;
-using BlogApp.Core.Repositories;
+﻿using BlogApp.Core.Data;
+using BlogApp.Core.Data.Repositories;
 using BlogApp.Core.Services;
+using BlogApp.Models;
 
-namespace BlogApp.Services
+namespace BlogApp.Services;
+
+public class CategoryService: ICategoryService
 {
-    public class CategoryService: ICategoryService
+    private readonly ICategoryRepository _categoryRepo; 
+
+    public CategoryService(IUnitOfWork unitOfWork)
     {
-        private readonly IGenericRepository<Category> _categoryRepo;
+        _categoryRepo = unitOfWork.CategoryRepository;
+    }
 
-        public CategoryService(IGenericRepository<Category> categoryRepo)
-        {
-            _categoryRepo = categoryRepo;
-        }
-
-        public List<Category>GetAllCategories() 
-        {
-            return  _categoryRepo.GetAll().ToList();
-        }
+    public List<Category>GetAllCategories() 
+    {
+        return  _categoryRepo.GetAll().ToList();
     }
 }

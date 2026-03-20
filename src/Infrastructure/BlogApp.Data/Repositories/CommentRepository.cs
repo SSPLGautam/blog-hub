@@ -1,4 +1,4 @@
-﻿using BlogApp.Core.Repositories;
+﻿using BlogApp.Core.Data.Repositories;
 using BlogApp.Data;
 using BlogApp.Models;
 using Microsoft.EntityFrameworkCore;
@@ -14,19 +14,27 @@ public class CommentRepository : GenericRepository<Comment> ,ICommentRepository
     {
         _context = context;
     }
-    public async Task<Comment> GetCommentWithPostAsync(int id)
+    
+    public async Task<List<Comment>> GeetByPostIdAsync(int postId)
     {
         return await _context.Comments
-            .Include(c => c.Post)
+            .Where(c => c.PostId == postId)
             .Include(c => c.User)
-            .FirstOrDefaultAsync(c => c.Id == id);
+            .ToListAsync();
     }
-    public async Task<List<Comment>> GetByPostIdAsync(int postId)
+
+    public async Task<Comment?> GetByIdAsync(int id, bool includePost, bool includeUser)
     {
-        return await _context.Comments
-              .Include(c => c.User)
-              .Include(c => c.Post)
-              .Where(c => c.PostId == postId)
-              .ToListAsync();
+        var query = _context.Comments.AsQueryable();
+
+        query = query.Where(c => c.Id == id);
+
+        if (includePost)
+            query = query.Include(c => c.Post);
+        if (includeUser)
+            query = query.Include(c => c.User);
+
+        return await query.FirstOrDefaultAsync();
+
     }
 }

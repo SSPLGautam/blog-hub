@@ -1,203 +1,180 @@
 ﻿using System.Security.Claims;
-using BlogApp.Core.Repositories;
+using BlogApp.Core.Data;
+using BlogApp.Core.Data.Repositories;
 using BlogApp.Core.Services;
-using BlogApp.Data.Repositories;
 using BlogApp.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 
-namespace BlogApp.Services
+namespace BlogApp.Services;
+
+public class PostService : IPostService
 {
-    public class PostService : IPostService
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IPostRepository _postsRepository;
+    private readonly IHostEnvironment _env;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+
+    private readonly string[] _allowedExt = { ".jpg", ".png", ".jpeg", ".webp" };
+
+    public PostService(
+        IUnitOfWork unitOfWork,
+        IHostEnvironment env,
+        IHttpContextAccessor httpContextAccessor)
     {
-        private readonly IGenericRepository<Post> _postRepository;
-        private readonly IHostEnvironment _env;
-        private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly IGenericRepository<PostLike> _likeRepository;
-        private readonly IGenericRepository<Comment> _commentRepository;
-        private readonly string[] _allowedExt = { ".jpg", ".png", ".jpeg", ".webp" };
+        _unitOfWork = unitOfWork;
+        _postsRepository = unitOfWork.PostsRepository;
+        _env = env;
+        _httpContextAccessor = httpContextAccessor;
+    }
 
-        public PostService(
-            IGenericRepository<Post> postRepository,
-            IGenericRepository<PostLike> likeRepository,
-            IGenericRepository<Comment> commentRepository,
-            IHostEnvironment env,
-            IHttpContextAccessor httpContextAccessor)
+    public async Task<(List<Post> posts, int totalCount)> GetPostsAsync(
+        int? categoryId,
+        bool isMostLiked,
+        string sortOrder,
+        int page,
+        int pageSize,
+        string userId,
+        bool isAdmin)
+    {
+        var query = _postsRepository.GetAllWithDetails();
+
+        if (!isAdmin)
         {
-            _postRepository = postRepository;
-            _likeRepository = likeRepository;
-            _commentRepository = commentRepository;
-            _env = env;
-            _httpContextAccessor = httpContextAccessor;
+            query = query.Where(p =>
+                p.IsPublished || p.CreatedByUserId == userId);
         }
 
-        public async Task<(List<Post> posts, int totalCount)> GetPostsAsync(
-            int? categoryId,
-            bool isMostLiked,
-            string sortOrder,
-            int page,
-            int pageSize,
-            string userId,
-            bool isAdmin)
+        if (categoryId.HasValue)
+            query = query.Where(p => p.CategoryId == categoryId);
+
+        if (isMostLiked)
         {
-            var query = _postRepository.GetAll();
-
-            query = query.Include(p => p.Category)
-                .Include(p => p.Likes)
-                .Include(p => p.Comments)
-                .ThenInclude(c => c.User);
-
-            if (!isAdmin)
+            query = query.OrderByDescending(p => p.Likes.Count)
+                         .ThenByDescending(p => p.PublishedDate);
+        }
+        else
+        {
+            query = sortOrder switch
             {
-                query = query.Where(p =>
-                    p.IsPublished || p.CreatedByUserId == userId);
-            }
-
-            if (categoryId.HasValue)
-                query = query.Where(p => p.CategoryId == categoryId);
-
-            if (isMostLiked)
-            {
-                query = query.OrderByDescending(p => p.Likes.Count)
-                             .ThenByDescending(p => p.PublishedDate);
-            }
-            else
-            {
-                query = sortOrder switch
-                {
-                    "oldest" => query.OrderBy(p => p.PublishedDate),
-                    "title_asc" => query.OrderBy(p => p.Title),
-                    "title_desc" => query.OrderByDescending(p => p.Title),
-                    _ => query.OrderByDescending(p => p.PublishedDate)
-                };
-            }
-
-            int total = await query.CountAsync();
-
-            var posts = await query
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return (posts, total);
+                "oldest" => query.OrderBy(p => p.PublishedDate),
+                "title_asc" => query.OrderBy(p => p.Title),
+                "title_desc" => query.OrderByDescending(p => p.Title),
+                _ => query.OrderByDescending(p => p.PublishedDate)
+            };
         }
 
-        public async Task<Post> GetPostDetailAsync(int id)
-        {
-            return await _postRepository.GetAll()
-                .Include(p => p.Category)
+        int total = await query.CountAsync();
 
-                .Include(p => p.Likes)
-                .Include(p => p.Comments)
-                  .ThenInclude(c => c.User)
-                .FirstOrDefaultAsync(p => p.Id == id);
-        }
+        var posts = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
 
-        public async Task CreatePostAsync(Post post)
-        {
-            var userId = _httpContextAccessor?.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        return (posts, total);
+    }
 
-            if (userId == null)
-                return;
+    public async Task<Post> GetPostDetailAsync(int id)
+    {
+        return await _postsRepository.GetPostDetailAsync(id);
+    }
 
-            post.CreatedByUserId = userId;
+    public async Task CreatePostAsync(Post post)
+    {
+        var userId = _httpContextAccessor?.HttpContext?.User?
+            .FindFirstValue(ClaimTypes.NameIdentifier);
 
-            await _postRepository.AddAsync(post);
-            await _postRepository.SaveAsync();
-        }
+        if (userId == null)
+            return;
 
-        public async Task EditPostAsync(Post post)
-        {
-            var existing = await _postRepository.GetByIdAsync(post.Id);
-            if (existing == null)
-                throw new Exception("Post not found");
+        post.CreatedByUserId = userId;
 
-            var userId = _httpContextAccessor?.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null)
-                return;
-
-            bool? isAdmin = _httpContextAccessor?.HttpContext?.User?.IsInRole("Admin");
-            if (isAdmin == null)
-                return;
-
-            if (existing.CreatedByUserId != userId && !isAdmin.Value)
-                throw new UnauthorizedAccessException();
-
-            if (post.FeatureImagePath == null)
-                post.FeatureImagePath = existing.FeatureImagePath;
-
-            post.CreatedByUserId = existing.CreatedByUserId;
-
-            _postRepository.Update(post);
-            await _postRepository.SaveAsync();
-        }
-
-        public async Task DeletePostAsync(int id)
-        {
-            var post = await _postRepository.GetByIdAsync(id);
-
-            if (post == null)
-                throw new Exception("Post not found");
-
-
-            var likes = _likeRepository.GetAll()
-                .Where(l => l.PostId == id)
-                .ToList();
-
-            if (likes.Any())
-            {
-                foreach (var like in likes)
-                    _likeRepository.Delete(like);
-            }
-
-
-            var comments = _commentRepository.GetAll()
-                .Where(c => c.PostId == id)
-                .ToList();
-
-            if (comments.Any())
-            {
-                foreach (var comment in comments)
-                    _commentRepository.Delete(comment);
-            }
-            _postRepository.Delete(post);
-
-            await _postRepository.SaveAsync();
-        }
-
-
-        public async Task TogglePublishAsync(int id, string userId, bool isAdmin)
-        {
-            var post = await _postRepository.GetByIdAsync(id);
-
-            if (post == null)
-                throw new Exception("Post not found");
-
-            if (post.CreatedByUserId != userId && !isAdmin)
-                throw new UnauthorizedAccessException();
-
-            post.IsPublished = !post.IsPublished;
-
-            _postRepository.Update(post);
-            await _postRepository.SaveAsync();
-        }
-
-        private async Task<string> UploadFile(Microsoft.AspNetCore.Http.IFormFile file)
-        {
-            string fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
-            string folderPath = Path.Combine(_env.ContentRootPath, "images");
-
-            if (!Directory.Exists(folderPath))
-                Directory.CreateDirectory(folderPath);
-
-            string filePath = Path.Combine(folderPath, fileName);
-
-            using var stream = new FileStream(filePath, FileMode.Create);
-            await file.CopyToAsync(stream);
-
-            return "/images/" + fileName;
-        }
+        await _postsRepository.AddAsync(post);
       
+    }
+
+    public async Task EditPostAsync(Post post)
+    {
+        var existing = await _postsRepository.GetByIdAsync(post.Id);
+
+        if (existing == null)
+            throw new Exception("Post not found");
+
+        var userId = _httpContextAccessor?.HttpContext?.User?
+            .FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId == null)
+            return;
+
+        bool isAdmin = _httpContextAccessor.HttpContext.User.IsInRole("Admin");
+
+        if (existing.CreatedByUserId != userId && !isAdmin)
+            throw new UnauthorizedAccessException();
+
+        if (post.FeatureImagePath == null)
+            post.FeatureImagePath = existing.FeatureImagePath;
+
+        post.CreatedByUserId = existing.CreatedByUserId;
+
+        _postsRepository.Update(post);
+       
+    }
+
+    public async Task DeletePostAsync(int id)
+    {
+        var post = await _postsRepository.GetByIdAsync(id);
+
+        if (post == null)
+            throw new Exception("Post not found");
+
+        var likes = _unitOfWork.LikesRepository.GetAll()
+            .Where(l => l.PostId == id)
+            .ToList();
+
+        foreach (var like in likes)
+            _unitOfWork.LikesRepository.Delete(like);
+
+        var comments = _unitOfWork.CommentsRepository.GetAll()
+            .Where(c => c.PostId == id)
+            .ToList();
+
+        foreach (var comment in comments)
+            _unitOfWork.CommentsRepository.Delete(comment);
+
+        _postsRepository.Delete(post);
+
+    }
+
+    public async Task TogglePublishAsync(int id, string userId, bool isAdmin)
+    {
+        var post = await _postsRepository.GetByIdAsync(id);
+
+        if (post == null)
+            throw new Exception("Post not found");
+
+        if (post.CreatedByUserId != userId && !isAdmin)
+            throw new UnauthorizedAccessException();
+
+        post.IsPublished = !post.IsPublished;
+
+        _postsRepository.Update(post);
+    
+    }
+
+    private async Task<string> UploadFile(IFormFile file)
+    {
+        string fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
+        string folderPath = Path.Combine(_env.ContentRootPath, "images");
+
+        if (!Directory.Exists(folderPath))
+            Directory.CreateDirectory(folderPath);
+
+        string filePath = Path.Combine(folderPath, fileName);
+
+        using var stream = new FileStream(filePath, FileMode.Create);
+        await file.CopyToAsync(stream);
+
+        return "/images/" + fileName;
     }
 }

@@ -1,9 +1,8 @@
 ﻿using BlogApp.Models;
 
-namespace BlogApp.Core.Services
+namespace BlogApp.Core.Services;
+
+public interface ICategoryService
 {
-    public interface ICategoryService
-    {
-        public List<Category> GetAllCategories();
-    }
+    public List<Category> GetAllCategories();
 }

@@ -1,10 +1,10 @@
 using System.Reflection;
-using BlogApp.Core.Repositories;
+using BlogApp.Core.Data;
+using BlogApp.Core.Data.Repositories;
 using BlogApp.Core.Services;
 using BlogApp.Data;
 using BlogApp.Data.Repositories;
 using BlogApp.Services;
-using BlogApp.Web.AutoMapper.Profiles;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -44,17 +44,15 @@ builder.Services.AddAuthorization(options =>
 
 //Add  Services for Repository and Service
 // Generic Repo
-builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+//builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
-// Custom Repos 
-builder.Services.AddScoped<ICommentRepository, CommentRepository>();
-builder.Services.AddScoped<ILikeRepository, LikeRepository>();
 
 // Services
-builder.Services.AddScoped<IPostService, PostService>();          
+builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<ILikeService, LikeService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 var app = builder.Build();
 
 try

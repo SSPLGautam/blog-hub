@@ -1,7 +1,8 @@
 ﻿using BlogApp.Data;
 using BlogApp.Models;
 using Microsoft.EntityFrameworkCore;
-using BlogApp.Core.Repositories;
+using BlogApp.Core.Data.Repositories;
+using System.Diagnostics;
 
 namespace BlogApp.Data.Repositories
 {
@@ -11,14 +12,15 @@ namespace BlogApp.Data.Repositories
         private readonly DbSet<T> _dbSet;
         public GenericRepository(AppDbContext context)
         {
-            this._context = context;   
+            this._context = context;
+         
             _dbSet  = _context.Set<T>();    
         }     
         public  IQueryable<T> GetAll()
         {
             return _dbSet.AsQueryable();
         }
-      
+                
         public async Task AddAsync(T entity)
         {     await _dbSet.AddAsync(entity);
 
@@ -30,10 +32,6 @@ namespace BlogApp.Data.Repositories
         public void Delete(T entity) { 
             _dbSet.Remove(entity);  
 
-        }
-        public async  Task SaveAsync()
-        {
-            await _context.SaveChangesAsync();
         }
 
         public async Task<T> GetByIdAsync(int id)

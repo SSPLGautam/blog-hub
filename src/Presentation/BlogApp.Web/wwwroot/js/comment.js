@@ -61,15 +61,25 @@
 
     // PUBLISH FUNCTION
     $("#publishBtn").click(function () {
+       
 
-        $.post("/Post/TogglePublish",
-            { id: postId },
-            function () {
+            var postId = $(this).data("id");
 
-                location.reload();
+            $.ajax({
+                url: '/Post/TogglePublish',   
+                type: 'PUT',                  
+                data: { id: postId },         
+                success: function () {
+                    location.reload();
+                },
+                error: function () {
+                    alert("Something went wrong");
+                }
             });
 
-    });
+        });
+
+  
 
 
     // DELETE COMMENT

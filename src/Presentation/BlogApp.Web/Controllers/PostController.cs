@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using AutoMapper;
-using BlogApp.Core.Repositories;
+using BlogApp.Core.Data;
+using BlogApp.Core.Data.Repositories;
 using BlogApp.Core.Services;
 using BlogApp.Models;
 using BlogApp.ViewModel;
@@ -22,7 +23,8 @@ namespace BlogApp.Controllers
         private readonly IPostService _postService;
         private readonly ICommentService _commentService;
         private readonly ILikeService _likeService;
-        private readonly IGenericRepository<Category> _categoryRepository;
+        private readonly ICategoryService _categoryService;
+        private readonly IUnitOfWork _unitOfWork;   
         private readonly IMapper _mapper;
 
         #endregion
@@ -33,14 +35,16 @@ namespace BlogApp.Controllers
             IPostService postService,
             ICommentService commentService,
             ILikeService likeService,
-            IMapper mapper,
-            IGenericRepository<Category> categoryRepository)
+            IUnitOfWork unitOfWork,
+            ICategoryService categoryService,
+            IMapper mapper)
         {
             _postService = postService;
             _commentService = commentService;
             _likeService = likeService;
+            _unitOfWork = unitOfWork;
+            _categoryService = categoryService;
             _mapper = mapper;
-            _categoryRepository = categoryRepository;
         }
 
         #endregion
@@ -74,7 +78,7 @@ namespace BlogApp.Controllers
                 SortOrder = sortOrder,
                 IsMostLiked = is_most_Liked,
                 CategoryId = categoryId,
-                Categories = _mapper.Map<List<CategoryViewModel>>(_categoryRepository.GetAll().ToList()),
+                Categories = _mapper.Map<List<CategoryViewModel>>(_categoryService.GetAllCategories().ToList()),
                 Posts = _mapper.Map<List<PostViewModel>>(posts)
             };
 
@@ -94,7 +98,7 @@ namespace BlogApp.Controllers
             var post = await _postService.GetPostDetailAsync(id);
 
             var comments = await _commentService.GetCommnetsByPostIdAsync(id);
-
+            await _unitOfWork.SaveAsync();
             var commentViewModel = comments.Select(c => new CommentViewModel
             {
                 Id = c.Id,
@@ -133,15 +137,15 @@ namespace BlogApp.Controllers
 
             try
             {
-                #region Upload Image
-
-                ImagesHelper.UploadFile(vm.FeatureImage);
-
-                #endregion
+                
 
                 var post = _mapper.Map<Post>(vm);
-
+                if (vm.FeatureImage != null)
+                {
+                    post.FeatureImagePath = ImagesHelper.UploadFile(vm.FeatureImage);
+                }
                 await _postService.CreatePostAsync(post);
+                await _unitOfWork.SaveAsync();
 
                 return RedirectToAction("Index");
             }
@@ -152,8 +156,6 @@ namespace BlogApp.Controllers
                 return View(vm);
             }
         }
-
-
         [Authorize(Roles = "Admin,Author")]
         [HttpGet("Edit")]
         public async Task<IActionResult> Edit(int id)
@@ -198,7 +200,7 @@ namespace BlogApp.Controllers
             post.CategoryId = vm.CategoryId;
 
             await _postService.EditPostAsync(post);
-
+            await _unitOfWork.SaveAsync();
             return RedirectToAction("Index");
         }
 
@@ -225,6 +227,7 @@ namespace BlogApp.Controllers
 
                 await _postService.DeletePostAsync(id);
 
+                await _unitOfWork.SaveAsync();
                 ImagesHelper.DeleteFile(post.FeatureImagePath);
 
                 TempData["SuccessMessage"] = "Post deleted successfully!";
@@ -249,6 +252,7 @@ namespace BlogApp.Controllers
             comment.UserId = userId;
 
             await _commentService.AddCommentAsync(comment);
+            await _unitOfWork.SaveAsync();
 
             var comments = await _commentService.GetCommnetsByPostIdAsync(model.PostId);
 
@@ -274,6 +278,7 @@ namespace BlogApp.Controllers
             bool isAdmin = User.IsInRole("Admin");
 
             var deleted = await _commentService.DeleteCommentAsync(id, userId, isAdmin);
+            await _unitOfWork.SaveAsync();
 
             if (!deleted)
                 return Forbid();
@@ -309,17 +314,20 @@ namespace BlogApp.Controllers
 
             string userId = userIdNullable;
 
-            var result = await _likeService.ToggleLikeAsync(postId, userId);
+            var liked = await _likeService.ToggleLikeAsync(postId, userId);
+            await _unitOfWork.SaveAsync();
+
+            var count = await _likeService.GetLikesCountByPostId(postId);
 
             return Json(new
             {
-                liked = result.liked,
-                count = result.count
+                liked = liked,
+                count = count
             });
         }
 
         [Authorize(Roles = "Admin,Author")]
-        [HttpPost("TogglePublish")]
+        [HttpPut("TogglePublish")]
         public async Task<IActionResult> TogglePublish(int id)
         {
             try
@@ -336,7 +344,8 @@ namespace BlogApp.Controllers
                 bool isAdmin = User.IsInRole("Admin");
 
                 await _postService.TogglePublishAsync(id, userId, isAdmin);
-                return RedirectToAction("Detail", new { id });
+                await _unitOfWork.SaveAsync();
+                return Ok();
             }
             catch (UnauthorizedAccessException)
             {
@@ -350,7 +359,7 @@ namespace BlogApp.Controllers
 
         private IEnumerable<SelectListItem> LoadCategories()
         {
-            return _categoryRepository.GetAll()
+            return _categoryService.GetAllCategories()
                 .Select(c => new SelectListItem
                 {
                     Value = c.Id.ToString(),

@@ -1,6 +1,6 @@
-﻿using BlogApp.Data;
-using BlogApp.Models;
-using BlogApp.Core.Repositories;
+﻿using BlogApp.Models;
+using BlogApp.Core.Data.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace BlogApp.Data.Repositories
 {
@@ -14,17 +14,15 @@ namespace BlogApp.Data.Repositories
             _context = context;
         }
 
-        public PostLike GetUserLike(int postId, string userId)
+        public async  Task<PostLike?> GetLikeByUserId(int postId, string userId)
         {
-            return  _context.PostLikes
-                .FirstOrDefault(x =>
+            return await _context.PostLikes.FirstOrDefaultAsync(x =>
                     x.PostId == postId && x.UserId == userId);
         }
 
-        public int CountByPostId(int postId)
+        public int GetLikesCountByPostId(int postId)
         {
-            return  _context.PostLikes
-                .Count(x => x.PostId == postId);
+            return  _context.PostLikes.Count(x => x.PostId == postId);
         }
     }
 }

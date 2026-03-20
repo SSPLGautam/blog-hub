@@ -1,48 +1,51 @@
-﻿using BlogApp.Models;
-using BlogApp.Core.Repositories;
+﻿using BlogApp.Core.Data;
+using BlogApp.Core.Data.Repositories;
 using BlogApp.Core.Services;
+using BlogApp.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Client;
 
-namespace BlogApp.Services
+namespace BlogApp.Services;
+
+public class LikeService : ILikeService
 {
-    public class LikeService: ILikeService
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ILikeRepository _likesRepository;
+
+    public LikeService(IUnitOfWork unitOfWork)
     {
-        private readonly ILikeRepository _likeRepo;
+        _unitOfWork = unitOfWork;
+        _likesRepository = unitOfWork.LikesRepository;
+    }
 
-        public LikeService(ILikeRepository likeRepo)
+    public async Task<bool> ToggleLikeAsync(int postId, string userId)
+    {
+        var existing = await _likesRepository.GetLikeByUserId(postId, userId);
+
+        // If the user hasn't liked the post yet, add a like. Otherwise, remove the existing like.
+        if (existing == null)
         {
-            _likeRepo = likeRepo;
-        }
-
-        public async Task<(bool liked, int count)> ToggleLikeAsync(
-            int postId, string userId)
-        {
-            var existing = _likeRepo
-                .GetUserLike(postId, userId);
-
-            if (existing != null)
-            {
-                _likeRepo.Delete(existing);
-                await _likeRepo.SaveAsync();
-
-                var count = _likeRepo
-                    .CountByPostId(postId);
-
-                return (false, count);
-            }
-
             var like = new PostLike
             {
                 PostId = postId,
                 UserId = userId
             };
 
-            await _likeRepo.AddAsync(like);
-            await _likeRepo.SaveAsync();
-
-            var newCount =_likeRepo
-                .CountByPostId(postId);
-
-            return (true, newCount);
+            await _likesRepository.AddAsync(like);
+            return true;
         }
+        else
+        {
+            _likesRepository.Delete(existing);
+
+            return false;
+        }
+    }
+    public async Task<int> GetLikesCountByPostId(int postId)
+    {
+        if (postId <= 0)
+            return 0;
+
+        return _likesRepository.GetLikesCountByPostId(postId);
     }
 }
