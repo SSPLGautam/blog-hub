@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using BlogApp.Core.Data;
 using BlogApp.Core.Data.Repositories;
+using BlogApp.Core.Domain;
 using BlogApp.Core.Services;
 using BlogApp.Models;
 using Microsoft.AspNetCore.Http;
@@ -30,49 +31,22 @@ public class PostService : IPostService
     }
 
     public async Task<(List<Post> posts, int totalCount)> GetPostsAsync(
-        int? categoryId,
-        bool isMostLiked,
-        string sortOrder,
-        int page,
-        int pageSize,
-        string userId,
-        bool isAdmin)
+     int? categoryId,
+     bool isMostLiked,
+     PostSortOrderEnum sortOrder,
+     int page,
+     int pageSize,
+     string userId,
+     bool isAdmin)
     {
-        var query = _postsRepository.GetAllWithDetails();
-
-        if (!isAdmin)
-        {
-            query = query.Where(p =>
-                p.IsPublished || p.CreatedByUserId == userId);
-        }
-
-        if (categoryId.HasValue)
-            query = query.Where(p => p.CategoryId == categoryId);
-
-        if (isMostLiked)
-        {
-            query = query.OrderByDescending(p => p.Likes.Count)
-                         .ThenByDescending(p => p.PublishedDate);
-        }
-        else
-        {
-            query = sortOrder switch
-            {
-                "oldest" => query.OrderBy(p => p.PublishedDate),
-                "title_asc" => query.OrderBy(p => p.Title),
-                "title_desc" => query.OrderByDescending(p => p.Title),
-                _ => query.OrderByDescending(p => p.PublishedDate)
-            };
-        }
-
-        int total = await query.CountAsync();
-
-        var posts = await query
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        return (posts, total);
+        return await _postsRepository.GetPostsAsync(
+            categoryId,
+            isMostLiked,
+            sortOrder,
+            page,
+            pageSize,
+            userId,
+            isAdmin,true,true,false);
     }
 
     public async Task<Post> GetPostDetailAsync(int id)
@@ -177,4 +151,6 @@ public class PostService : IPostService
 
         return "/images/" + fileName;
     }
+
+    
 }

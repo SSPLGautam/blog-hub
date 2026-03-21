@@ -2,6 +2,7 @@
 using AutoMapper;
 using BlogApp.Core.Data;
 using BlogApp.Core.Data.Repositories;
+using BlogApp.Core.Domain;
 using BlogApp.Core.Services;
 using BlogApp.Models;
 using BlogApp.ViewModel;
@@ -24,7 +25,7 @@ namespace BlogApp.Controllers
         private readonly ICommentService _commentService;
         private readonly ILikeService _likeService;
         private readonly ICategoryService _categoryService;
-        private readonly IUnitOfWork _unitOfWork;   
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
 
         #endregion
@@ -53,12 +54,14 @@ namespace BlogApp.Controllers
 
         [HttpGet("")]
         public async Task<IActionResult> Index(
-            int? categoryId,
-            bool is_most_Liked = false,
-            string sortOrder = "newest",
-            int page = 1)
+         int? categoryId,
+           bool is_most_Liked = false,
+           PostSortOrderEnum sortOrder = PostSortOrderEnum.Newest,
+           int page = 1)
         {
+        
             int pageSize = 6;
+
             string userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
             bool isAdmin = User.IsInRole("Admin");
 
@@ -78,7 +81,8 @@ namespace BlogApp.Controllers
                 SortOrder = sortOrder,
                 IsMostLiked = is_most_Liked,
                 CategoryId = categoryId,
-                Categories = _mapper.Map<List<CategoryViewModel>>(_categoryService.GetAllCategories().ToList()),
+                Categories = _mapper.Map<List<CategoryViewModel>>(
+                    _categoryService.GetAllCategories().ToList()),
                 Posts = _mapper.Map<List<PostViewModel>>(posts)
             };
 
@@ -137,7 +141,7 @@ namespace BlogApp.Controllers
 
             try
             {
-                
+
 
                 var post = _mapper.Map<Post>(vm);
                 if (vm.FeatureImage != null)
