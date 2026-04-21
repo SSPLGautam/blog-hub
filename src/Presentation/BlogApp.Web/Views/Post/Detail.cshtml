@@ -1,5 +1,5 @@
 ﻿@using System.Security.Claims
-@using BlogApp.Web.Helper
+
 @using BlogApp.Web.ViewModel
 @model PostViewModel
 
@@ -86,8 +86,7 @@
         <span class="badge bg-secondary">Category</span>
         @Model.Category.Name
     </p>
-
-    <img src="@Model.FeatureImagePath"
+<img src="@($"https://localhost:44333{Model.FeatureImagePath}")"
          alt="@Model.Title"
          class="feature_image" />
 

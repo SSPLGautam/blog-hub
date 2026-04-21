@@ -19,7 +19,7 @@ public class UnitOfWork : IUnitOfWork
     public IPostRepository PostsRepository =>
         _postsRepository ??= new PostRepository(_context);
 
-    public ILikeRepository LikesRepository =>
+    public ILikeRepository LikesRepository =>   
         _likesRepository ??= new LikeRepository(_context);
 
     public ICommentRepository CommentsRepository =>

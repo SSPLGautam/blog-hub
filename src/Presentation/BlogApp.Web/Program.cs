@@ -1,19 +1,34 @@
-using System.Reflection;
-using BlogApp.Core.Data;
-using BlogApp.Core.Data.Repositories;
-using BlogApp.Core.Services;
-using BlogApp.Data;
-using BlogApp.Data.Repositories;
-using BlogApp.Services;
+
+using BlogApp.Web.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using BlogApp.Core.Data;
+using BlogApp.Data; 
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddAutoMapper(_ => { }, typeof(Program).GetTypeInfo().Assembly);
-// Add services to the container.
-builder.Services.AddControllersWithViews();
+
+
+builder.Services.AddAutoMapper(typeof(BlogAppAutoMapperProfile));
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddControllersWithViews();
+builder.Services.AddSession();
+builder.Services.AddHttpContextAccessor();
+
+
+builder.Services.AddHttpClient("ApiClient", client =>
+{
+    client.BaseAddress = new Uri("https://localhost:44333/api/");
+});
+
+
+builder.Services.AddScoped<PostApiService>();
+builder.Services.AddScoped<LikeApiService>();
+builder.Services.AddScoped<CommentApiService>();
+builder.Services.AddScoped<CategoryApiService>();
+
 builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
 {
     options.Password.RequireDigit = true;
@@ -24,115 +39,81 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
     options.Lockout.AllowedForNewUsers = true;
     options.User.RequireUniqueEmail = true;
 })
-.AddEntityFrameworkStores<AppDbContext>()
-.AddDefaultTokenProviders();                                      
-builder.Services.ConfigureApplicationCookie(options =>
+.AddEntityFrameworkStores<AppDbContext>()   
+.AddDefaultTokenProviders();
 
-{ 
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
     options.LoginPath = "/Auth/Login";
     options.AccessDeniedPath = "/Auth/AccessDenied";
     options.ExpireTimeSpan = TimeSpan.FromDays(2);
     options.SlidingExpiration = true;
-
 });
+
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("Admin", policy =>
         policy.RequireRole("Admin"));
 });
 
-
-//Add  Services for Repository and Service
-// Generic Repo
-//builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
-
-
-// Services
-builder.Services.AddScoped<IPostService, PostService>();
-builder.Services.AddScoped<ICommentService, CommentService>();
-builder.Services.AddScoped<ILikeService, LikeService>();
-builder.Services.AddScoped<ICategoryService, CategoryService>();
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 var app = builder.Build();
 
-try
+
+using (var scope = app.Services.CreateScope())
 {
-    using (var scope = app.Services.CreateScope())
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+    string[] roles = { "Admin", "Author", "User" };
+
+    foreach (var role in roles)
     {
-        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-
-        string[] roles = { "Admin", "Author", "User" };
-
-        foreach (var role in roles)
+        if (!await roleManager.RoleExistsAsync(role))
         {
-            if (!await roleManager.RoleExistsAsync(role))
-            {
-                await roleManager.CreateAsync(new IdentityRole(role));
-            }
+            await roleManager.CreateAsync(new IdentityRole(role));
         }
     }
 }
-catch (Exception ex)
-{
-    // log error if needed
-}
+  
 
-try     
+using (var scope = app.Services.CreateScope())
 {
-    using (var scope = app.Services.CreateScope())
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+
+    string adminEmail = "admin@gmail.com";
+    string adminPassword = "Admin@1234";
+
+    var user = await userManager.FindByEmailAsync(adminEmail);
+
+    if (user == null)
     {
-        var _userManager = scope.ServiceProvider
-            .GetRequiredService<UserManager<IdentityUser>>();
-
-        var _roleManager = scope.ServiceProvider
-            .GetRequiredService<RoleManager<IdentityRole>>();
-
-        string adminEmail = "admin@gmail.com";
-        string adminPassword = "Admin@1234";
-
-        var existingAdminRole = await _roleManager.FindByNameAsync("Admin");
-        if (existingAdminRole == null)
+        user = new IdentityUser
         {
-            await _roleManager.CreateAsync(new IdentityRole("Admin"));
-        }
+            UserName = adminEmail,
+            Email = adminEmail
+        };
 
-        var existingAdminUser = await _userManager.FindByEmailAsync(adminEmail);
-        if (existingAdminUser == null)
+        var result = await userManager.CreateAsync(user, adminPassword);
+
+        if (result.Succeeded)
         {
-            var adminUser = new IdentityUser
-            {
-                UserName = adminEmail,
-                Email = adminEmail
-            };
-
-            var result = await _userManager.CreateAsync(adminUser, adminPassword);
-
-            if (result.Succeeded)
-            {
-                await _userManager.AddToRoleAsync(adminUser, "Admin");
-            }
-            else
-            {
-                throw new Exception("Could not create Admin user.");
-            }
+            await userManager.AddToRoleAsync(user, "Admin");
         }
     }
 }
-catch (Exception ex)
-{
 
-}
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
 app.UseRouting();
+
+app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -142,6 +123,5 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
-
 
 app.Run();

@@ -1,34 +1,41 @@
 ﻿using AutoMapper;
-using BlogApp.Models;
+using BlogApp.Shared.Dto;
 using BlogApp.ViewModels;
-using BlogApp.Web.Helper;
 using BlogApp.Web.ViewModel;
-
-namespace BlogApp.Web.AutoMapper.Profiles;
 
 public class BlogAppAutoMapperProfile : Profile
 {
     public BlogAppAutoMapperProfile()
     {
-        CreateMap<Post, PostViewModel>()
-            .ForMember(dest => dest.FeatureImage, opt => opt.MapFrom(x => ImagesHelper.GetImage(x.FeatureImagePath)))
-            .ForMember(dest => dest.Categories, opt => opt.Ignore());
+       
+        CreateMap<PostResponceDto, PostViewModel>()
+            .ForMember(dest => dest.Authore, opt => opt.MapFrom(src => src.Author))
+            .ForMember(dest => dest.FeatureImage, opt => opt.Ignore())
+            .ForMember(dest => dest.Categories, opt => opt.Ignore())
+            .ForMember(dest => dest.Comments, opt => opt.Ignore());
 
-        CreateMap<PostViewModel, Post>()
-            .ForMember(dest => dest.FeatureImagePath, opt => opt.MapFrom(x => ImagesHelper.GetImagePath(x.FeatureImage)));
+        CreateMap<PostDetailDto, PostViewModel>()
+            .ForMember(dest => dest.Authore, opt => opt.MapFrom(src => src.Author))
+            .ForMember(dest => dest.FeatureImage, opt => opt.Ignore())
+            .ForMember(dest => dest.Categories, opt => opt.Ignore())
+            .ForMember(dest => dest.Comments, opt => opt.Ignore())
+            .ForMember(dest => dest.Category, opt => opt.MapFrom(src => src.Category))
+            .ForMember(dest => dest.Likes, opt => opt.MapFrom(src => src.Likes));
+            
 
-        CreateMap<Comment, CommentViewModel>()
-                .ForMember(dest => dest.UserName,
-                    opt => opt.MapFrom(src => src.User.UserName))
-                .ForMember(dest => dest.CanDelete,
-                    opt => opt.Ignore());
+        CreateMap<LikeResponseDto, LikeViewModel>();
 
-        CreateMap<CommentViewModel, Comment>();
+        
+        CreateMap<CommentResponseDto, CommentViewModel>();
 
-        CreateMap<Category, CategoryViewModel>()
-            .ReverseMap();
+ 
+        CreateMap<CategoryDto, CategoryViewModel>();
 
+     
+        CreateMap<PostViewModel, PostCreatedDto>()
+            .ForMember(dest => dest.Author, opt => opt.MapFrom(src => src.Authore));
 
+        CreateMap<CommentViewModel, CommentCreateDto>();
     }
-
-}
+}    
+ 

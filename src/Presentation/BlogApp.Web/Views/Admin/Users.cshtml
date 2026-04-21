@@ -31,13 +31,11 @@
             <tr>
                 <form method="post">
 
-                   
                 <td>
                     @user.Email
                     <input type="hidden" name="userId" value="@user.Id" />
                 </td>
 
-			
 				<td>
                     @if (user.IsLocked)
                     {
@@ -49,7 +47,6 @@
                     }
                 </td>
 
-            
                 <td>
                     @if (user.IsLocked)
                     {
@@ -68,8 +65,6 @@
                         </button>
                     }
                 </td>
-
- 
                 <td>
                     <div class="form-check">
                         <input class="form-check-input"
@@ -88,7 +83,6 @@
                                @(user.UserRoles.Contains("Author") ? "checked" : "") />
                         <label class="form-check-label">Author</label>
                     </div>
-
                     <div class="form-check">
                         <input class="form-check-input"
                                type="checkbox"
@@ -103,7 +97,7 @@
                     <button type="submit"
                             formaction="@Url.Action("AssignRole", "Admin")"
                             class="btn btn-primary btn-sm">
-                        Assign
+                              Assign
                     </button>
                 </td>
 
@@ -111,4 +105,4 @@
             </tr>
         }
     </tbody>
-</table>
+</table>     

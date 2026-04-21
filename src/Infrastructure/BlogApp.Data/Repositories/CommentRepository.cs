@@ -15,7 +15,7 @@ public class CommentRepository : GenericRepository<Comment> ,ICommentRepository
         _context = context;
     }
     
-    public async Task<List<Comment>> GeetByPostIdAsync(int postId)
+    public async Task<List<Comment>> GetByPostIdAsync(int postId)
     {
         return await _context.Comments
             .Where(c => c.PostId == postId)

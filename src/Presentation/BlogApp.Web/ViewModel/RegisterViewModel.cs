@@ -17,4 +17,4 @@ namespace BlogApp.ViewModel
         public string ConfrimPassword { get; set; }
     }
 }
-
+    

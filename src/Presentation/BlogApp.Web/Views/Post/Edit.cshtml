@@ -1,4 +1,4 @@
-﻿@using BlogApp.Web.Helper
+﻿
 @using BlogApp.Web.ViewModel
 @model PostViewModel
 
@@ -86,7 +86,7 @@
 			@* <label asp-for="FeatureImage"></label> *@
 
 			<img id="imagePreview"
-				 src="@Model.FeatureImagePath"
+				 src="@($"https://localhost:44333{Model.FeatureImagePath}")"
 				 style="width:200px;height:auto;border-radius:6px;" />
 
 			<input asp-for="FeatureImage"

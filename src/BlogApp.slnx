@@ -12,4 +12,7 @@
   <Folder Name="/Presentation/">
     <Project Path="Presentation/BlogApp.Web/BlogApp.Web.csproj" />
   </Folder>
+  <Folder Name="/Shared/">
+    <Project Path="Shared/BlogApp.Shared/BlogApp.Shared.csproj" />
+  </Folder>
 </Solution>

@@ -32,12 +32,13 @@ public class LikeService : ILikeService
             };
 
             await _likesRepository.AddAsync(like);
+            await _unitOfWork.SaveAsync();
             return true;
         }
         else
         {
-            _likesRepository.Delete(existing);
-
+                        _likesRepository.Delete(existing);
+                        await _unitOfWork.SaveAsync();  
             return false;
         }
     }

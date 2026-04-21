@@ -8,7 +8,7 @@ namespace BlogApp.Core.Services
     {
         #region Post Methood
         Task<(List<Post> posts, int totalCount)> GetPostsAsync(
-     int? categoryId,
+     int ?categoryId,
      bool isMostLiked,
      PostSortOrderEnum sortOrder,
      int page,

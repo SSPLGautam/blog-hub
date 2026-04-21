@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using BlogApp.Models;
 using BlogApp.ViewModels;
-using BlogApp.Web.Helper;
+
 using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace BlogApp.Web.ViewModel;
@@ -34,9 +34,9 @@ public class PostViewModel
 
     public bool IsPublished { get; set; }
 
-    public Category? Category { get; set; }
+    public CategoryViewModel? Category { get; set; }
 
-    public IEnumerable<PostLike> Likes { get; set; } = new List<PostLike>();
+    public IEnumerable<LikeViewModel> Likes { get; set; } = new List<LikeViewModel>();
 
     public IEnumerable<CommentViewModel> Comments { get; set; } = new List<CommentViewModel>();
 

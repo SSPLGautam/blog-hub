@@ -1,8 +1,8 @@
 ﻿using BlogApp.Core.Domain;
 
 namespace BlogApp.Web.ViewModel;
-
-public class PostsListViewModel
+           
+public class PostsListViewModel         
 {
     public int CurrentPage { get; set; }
     public int TotalPages { get; set; }

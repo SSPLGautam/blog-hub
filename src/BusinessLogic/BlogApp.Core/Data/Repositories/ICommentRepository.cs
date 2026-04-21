@@ -6,6 +6,6 @@ namespace BlogApp.Core.Data.Repositories
     {
         Task<Comment?> GetByIdAsync(int id, bool includePost, bool includeUser);
 
-        Task<List<Comment>> GeetByPostIdAsync(int postId);
+        Task<List<Comment>> GetByPostIdAsync(int postId);
     }
 }

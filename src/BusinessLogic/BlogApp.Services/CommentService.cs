@@ -22,10 +22,11 @@ public class CommentService : ICommentService
         comment.CommentDate = DateTime.Now;
 
         await _commentsRepository.AddAsync(comment);
-      
+        await _unitOfWork.SaveAsync();
 
         return comment;
     }
+   
 
     public async Task<bool> DeleteCommentAsync(int commentId, string userId, bool isAdmin)
     {
@@ -39,18 +40,17 @@ public class CommentService : ICommentService
         bool isPostOwner = comment.Post.CreatedByUserId == userId;
 
         if (!(isAdmin || isCommentOwner || isPostOwner))
-            return false;
+            return false;    
 
         _commentsRepository.Delete(comment);
-       
+        await _unitOfWork.SaveAsync();
 
         return true;
     }
 
-
     public async Task<List<Comment>> GetCommnetsByPostIdAsync(int postId)
     {
-        return await _commentsRepository.GeetByPostIdAsync(postId);
+        return await _commentsRepository.GetByPostIdAsync(postId);
             
     }
 }

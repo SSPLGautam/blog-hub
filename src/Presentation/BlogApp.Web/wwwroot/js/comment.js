@@ -1,16 +1,28 @@
 ﻿$(document).ready(function () {
 
-    var postId = $("#postContainer").data("post-id");
+    var postId = parseInt($("#commentPostId").val());
 
     // ADD COMMENT
-   
     $("#commentForm").on("submit", function (event) {
 
         event.preventDefault();
 
         var content = $("#Content").val();
-        var postId = $("#PostId").val();
+        var postId = $("#commentPostId").val();
 
+        console.log("PostId:", postId);
+        console.log("Content:", content);
+
+        if (!postId || isNaN(parseInt(postId))) {
+            alert("PostId is invalid");
+            return;
+        }
+        postId = parseInt(postId);
+
+        if (!content.trim()) {
+            alert("Comment cannot be empty");
+            return;
+        }
         $.ajax({
             url: '/Post/AddComment',
             type: 'POST',
@@ -20,23 +32,22 @@
                 PostId: postId
             }),
             success: function (response) {
-
                 $("#commentSection").html(response);
                 $("#commentForm")[0].reset();
-
             },
-            error: function () {
-                alert("Failed to add comment");
+            error: function (xhr) {
+                console.log("ERROR:", xhr.responseText);
+                alert(xhr.responseText);
             }
         });
 
     });
-
     // LIKE FUNCTION
     $("#likeBtn").click(function () {
         var postId = $("#PostId").val();
         $.post("/Post/ToggleLike",
             { postId: postId },
+
             function (response) {
 
                 $("#likeCount").text(response.count + " Likes");
@@ -57,14 +68,9 @@
                 }
             });
     });
-
-
     // PUBLISH FUNCTION
     $("#publishBtn").click(function () {
-       
-
             var postId = $(this).data("id");
-
             $.ajax({
                 url: '/Post/TogglePublish',   
                 type: 'PUT',                  
@@ -79,9 +85,6 @@
 
         });
 
-  
-
-
     // DELETE COMMENT
     $(document).on("click", ".deleteComment", function () {
 
@@ -91,7 +94,6 @@
         if (!confirm("Are you sure you want to delete this comment?")) {
             return;
         }
-
         $.ajax({
             url: '/Post/DeleteComment',
             type: 'POST',
@@ -110,7 +112,10 @@
                 alert("Something went wrong while deleting the comment.");
             }
         })
-
     })
-
 });
+
+
+
+
+       
